@@ -36,6 +36,7 @@ I = 1000 #number of points on grid
 k_min_1 = 0.1*k_st # min value
 k_max_1 = 10.*k_st # max value
 k = linspace(k_min_1, k_max_1, I)
+k_1=k
 dk = (k_max_1-k_min_1)/(I-1)
 
 #create matrices for k and z
@@ -183,17 +184,19 @@ png("Value_function_vs_k")
 
 # create a random distribution to pull from
 Dist = Bernoulli(.45)
-time = 10000 # set the number of external time periods to zero
+time = 10000 # set the number of external time periods to 10,000
 
 # Add in the misspecification
-σ_g =.5
-Σ_g=[σ_g]
+σ_g =.5 #original misspecification is that σ =.5
+Σ_g=[σ_g] # why is this here? do I use it later???
 # set up all of these empty matrices
 Vaf_2, Vab_2, c_2 = [zeros(I,1) for i in 1:3]
 Val_2 =[]
 savings=[]
+grid=[]
+cons=[]
 
-maxit= 30 #set number of iterations (only need 6 to converge)
+maxit= 30 #set number of iterations for d
 for t in 1:time
     # Now it's time to solve the model, first put in a guess for the value function
     k_st = ((α)/(ρ+δ+σ_g^2))^(1/(1-α))
@@ -202,6 +205,7 @@ for t in 1:time
     k = linspace(k_min, k_max, I)
     dk = (k_max-k_min)/(I-1)
     kk = k*1.
+    push!(grid,k)
 
     v0 = (kk.^α).^(1-γ)/(1-γ)/ρ
     v_2=v0
@@ -289,6 +293,7 @@ for t in 1:time
     # calculate the savings for kk
     ss_2 = kk.^α - (δ+σ_g^2).*kk
     push!(savings, ss_2)
+    push!(cons,c_2)
     # add in updating
     if indicator ==1
         σ_g = σ_g + .001(σ-σ_g)
@@ -298,13 +303,31 @@ end
 
 
 # Plot the savings vs. k
-plot(k, c_2, grid=false,
+plot(k[1:I-1], c_2[1:I-1], grid=false,
+		xlabel="k", ylabel="c(k)",
+        xlims=(k[1],k[end]),legend=:bottomright,
+		label="Guess", title="Optimal Consumption Policies",
+        legend=:bottomright)
+plot!(k[1:I-1],c_1[1:I-1], label="Actual", line=:dash)
+png("OptimalCons")
+
+plot(k[1:I-1],cons[end][1:I-1], grid=false,
 		xlabel="k", ylabel="s(k)",
+        xlims=(k[1],k[end]),label="10,000th period", legend=:bottomright,
+        title="Optimal Consumption Policies", color=:hotpink)
+plot!(k[1:I-1],cons[500][1:I-1], label="500th period", color=:blue)
+plot!(k[1:I-1],cons[1][1:I-1], label="Initial", color=:green)
+plot!(k[1:I-1],c_1[1:I-1], label="Actual", line=:dot, color=:black)
+png("OptimalCons_2")
+
+plot(grid[end][1:I-1], c_2[1:I-1], grid=false,
+		xlabel="k", ylabel="c(k)",
         xlims=(k[1],k[end]),
 		label="Guess", title="Optimal Consumption Policies with")
-plot!(k,c_1, label="Actual", line=:dash)
-plot!(k, zeros(I,1), line=:dash, color=:black, label="")
-png("OptimalCons")
+plot!(grid[500][1:I-1],cons[500][1:I-1], label="", line=:dash)
+plot!(grid[1][1:I-1],cons[1][1:I-1], label="", line=:dash)
+plot!(k_1[1:I-1],c_1[1:I-1], label="Actual", line=:dash)
+png("OptimalCons_adjusted")
 
 plot(k, savings[end], grid=false,
 		xlabel="k", ylabel="s(k)",
@@ -316,6 +339,17 @@ plot!(k,savings[1], label="Initial", color=:green)
 plot!(k,ss_1, label="Actual", line=:dot, color=:black)
 png("OptimalSavings_2")
 
+plot(grid[end], savings[end], grid=false,
+		xlabel="k", ylabel="s(k)",
+        xlims=(k[1],k[end]),label="10,000th period",
+        title="Optimal Savings Policies", color=:hotpink,
+        legend=:bottomleft)
+plot!(k_1, zeros(I,1), color=:black, label="")
+plot!(grid[500],savings[500], label="500th period", color=:blue)
+plot!(grid[1],savings[1], label="Initial", color=:green)
+plot!(k_1,ss_1, label="Actual", line=:dot, color=:black)
+png("OptimalSavings_adjusted")
+
 
 plot(k, savings[9000], grid=false,
 		xlabel="k", ylabel="s(k)",
@@ -324,6 +358,19 @@ plot!(k, zeros(I,1), line=:dash, color=:black, label="", legend=:bottomleft)
 plot!(k,ss_1, label="Actual")
 png("OptimalSavings_All")
 
+
+plot(k_1, v_1, grid=false,
+		xlabel="k", ylabel="V(k)",
+		xlims=(k[1],k[end]), title="Value Functions",
+        legend=:bottomleft, color=:black, line=:dash,
+        label="True")
+plot!(grid[1],Val_2[1], label="Initial", color=:black)
+plot!(grid[100],Val_2[100], label="", color=:green,)
+plot!(grid[200],Val_2[200], label="", color=:orange)
+plot!(grid[500],Val_2[500], label="", color=:red)
+plot!(grid[1000],Val_2[1000], label="", color=:pink)
+plot!(grid[end],Val_2[end], label="", color=:hotpink)
+png("Value_function_vs_k_adjusted")
 
 plot(k, v_1, grid=false,
 		xlabel="k", ylabel="V(k)",
@@ -338,8 +385,16 @@ plot!(k,Val_2[1000], label="", color=:pink)
 plot!(k,Val_2[end], label="", color=:hotpink)
 png("Value_function_vs_k_2")
 
+
 plot(k, Val_2, grid=false,
 		xlabel="k", ylabel="V(k)",
 		xlims=(k[1],k[end]), title="Value Functions", legend=false)
 plot!(k,v_1, label="", color=:black, line=:dot)
 png("Value_function_vs_k_all")
+
+
+plot(grid, Val_2, grid=false,
+		xlabel="k", ylabel="V(k)",
+		xlims=(k[1],k[end]), title="Value Functions", legend=false)
+plot!(k_1,v_1, label="", color=:black, line=:dot)
+png("Value_function_vs_k_all_adjusted")
