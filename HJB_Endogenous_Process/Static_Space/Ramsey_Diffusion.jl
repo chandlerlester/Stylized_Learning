@@ -219,7 +219,7 @@ for i in 1:time
         drf =(1-(cf/kk.^α))*kk.^α-(δ+σ_g^2).*kk
 
         # consumption and saving backwards difference
-        cb = Vab_1.^(-1.0/γ)
+        cb = Vab_2.^(-1.0/γ)
         drb = (1-(cb/k.^α))*kk.^α-(δ+σ_g^2).*kk
         #println(sb)
         #consumption and derivative of the value function at the steady state
@@ -236,7 +236,7 @@ for i in 1:time
         Va_upwind = Vaf_1.*If + Vab_1.*Ib + Va0.*I0 # need to include SS term
 
         c_2 = Va_upwind.^(-1/γ)
-        u = (c_1.^(1-γ))/(1-γ)
+        u = (c_2.^(1-γ))/(1-γ)
 
         # Now to constuct the A matrix
         X = -min(drb, 0)/dk + (σ_g.*kk/(2*dk))
@@ -291,12 +291,11 @@ end
 
 
 # Plot the savings vs. k
-plot(k, c_2, grid=false,
+plot(k[1:I-1], c_2[1:I-1], grid=false,
 		xlabel="k", ylabel="s(k)",
         xlims=(k_min,k_max),
 		label="Guess", title="Optimal Consumption Policies with")
-plot!(k,c_1, label="Actual")
-plot!(k, zeros(I,1), line=:dash, color=:black)
+plot!(k[1:I-1],c_1[1:I-1], label="Actual")
 png("OptimalCons")
 
 ss_2 = kk.^α - (δ+σ_g^2).*kk
