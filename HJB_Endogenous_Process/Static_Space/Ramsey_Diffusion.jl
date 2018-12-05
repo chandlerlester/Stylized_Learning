@@ -16,7 +16,8 @@ using Parameters, Distributions, Plots
     ρ = 0.05 #the discount rate
     α = 1/3 # the curvature of the production function (cobb-douglas)
     δ = 0.05 # the depreciation rate
-    σ = 2.0 #variance term
+    σ = 0.5 #variance term
+    n=0.51
 end
 
 param = Model_parameters()
@@ -29,7 +30,7 @@ param = Model_parameters()
 =============================================================================#
 #K_starting point, for mean of z process
 
-k_st = ((α)/(ρ+δ+σ^2))^(1/(1-α))
+k_st = ((α)/(ρ+δ+n-σ^2))^(1/(1-α))
 
 # create the grid for k
 I = 1000 #number of points on grid
@@ -37,6 +38,8 @@ k_min = 0.1*k_st # min value
 k_max = 10.*k_st # max value
 k = linspace(k_min, k_max, I)
 dk = (k_max-k_min)/(I-1)
+k_min_1=k_min
+k_max_1=k_max
 
 #create matrices for k and z
 kk = k*1
@@ -64,31 +67,31 @@ v_1=v0
 maxit= 30 #set number of iterations (only need 6 to converge)
 dist = [] # set up empty array for the convergence criteria
 
-for n = 1:maxit
+for j = 1:maxit
     V=v_1
 
     #Now set up the forward difference
 
     Vaf_1[1:I-1,:] = (V[2:I, :] - V[1:I-1,:])/dk
-    Vaf_1[I,:] = (k_max.^α - (δ+σ^2).*k_max).^(-γ) # imposes a constraint
+    Vaf_1[I,:] = (k_max.^α - (δ+n-σ^2).*k_max).^(-γ) # imposes a constraint
 
     #backward difference
     Vab_1[2:I,:] = (V[2:I, :] - V[1:I-1,:])/dk
-    Vab_1[1,:] = (k_min.^α - (δ+σ^2).*k_min).^(-γ)
+    Vab_1[1,:] = (k_min.^α - (δ+n-σ^2).*k_min).^(-γ)
 
     #I_concave = Vab .> Vaf # indicator for whether the value function is concave
 
     # Consumption and savings functions
     cf = Vaf_1.^(-1/γ)
-    drf =(1-(cf/kk.^α))*kk.^α-(δ+σ^2).*kk
+    drf =(1-(cf/kk.^α))*kk.^α-(δ+n-σ^2).*kk
 
     # consumption and saving backwards difference
     cb = Vab_1.^(-1.0/γ)
-    drb = (1-(cb/k.^α))*kk.^α-(δ+σ^2).*kk
+    drb = (1-(cb/k.^α))*kk.^α-(δ+n-σ^2).*kk
     #println(sb)
     #consumption and derivative of the value function at the steady state
 
-    c0 = kk.^α - (δ+σ^2).*kk
+    c0 = kk.^α - (δ+n-σ^2).*kk
     Va0 = c0.^(-γ)
 
     # df chooses between the forward or backward difference
@@ -137,16 +140,16 @@ for n = 1:maxit
   v_1= V
   # need push function to add to an already existing array
   push!(dist, findmax(abs(V_change))[1])
-  if dist[n].< ε
+  if dist[j].< ε
       println("Value Function Converged Iteration=")
-      println(n)
+      println(j)
       break
   end
 
 end
 
 # calculate the savings for kk
-ss_1 = kk.^α - (δ+σ^2).*kk
+ss_1 = kk.^α - (δ+n-σ^2).*kk
 
 # Plot the savings vs. k
 plot(k, c_1, grid=false,
@@ -183,10 +186,10 @@ png("Value_function_vs_k")
 
 # create a random distribution to pull from
 Dist = Bernoulli(.45)
-time = 100 # set the number of external time periods to zero
+time = 10000 # set the number of external time periods
 
 # Add in the misspecification
-σ_g =5.0
+σ_g =0.02
 Σ_g=[σ_g]
 # set up all of these empty matrices
 Vaf_2, Vab_2, c_2 = [zeros(I,1) for i in 1:3]
@@ -194,37 +197,37 @@ Val_2 =[]
 savings=[]
 
 maxit= 30 #set number of iterations (only need 6 to converge)
-for i in 1:time
+for t in 1:time
     # Now it's time to solve the model, first put in a guess for the value function
     v0 = (kk.^α).^(1-γ)/(1-γ)/ρ
     v_2=v0
     dist = [] # needs to be in the time loop to work properly
     indicator = rand(Dist)
-    for n = 1:maxit
+    for j = 1:maxit
         V=v_2
 
         #Now set up the forward difference
 
         Vaf_2[1:I-1,:] = (V[2:I, :] - V[1:I-1,:])/dk
-        Vaf_2[I,:] = (k_max.^α - (δ+σ_g^2).*k_max).^(-γ) # imposes a constraint
+        Vaf_2[I,:] = (k_max.^α - (δ+n-σ_g^2).*k_max).^(-γ) # imposes a constraint
 
         #backward difference
         Vab_2[2:I,:] = (V[2:I, :] - V[1:I-1,:])/dk
-        Vab_2[1,:] = (k_min.^α - (δ+σ_g^2).*k_min).^(-γ)
+        Vab_2[1,:] = (k_min.^α - (δ+n-σ_g^2).*k_min).^(-γ)
 
         #I_concave = Vab .> Vaf # indicator for whether the value function is concave
 
         # Consumption and savings functions
         cf = Vaf_2.^(-1/γ)
-        drf =(1-(cf/kk.^α))*kk.^α-(δ+σ_g^2).*kk
+        drf =(1-(cf/kk.^α))*kk.^α-(δ+n-σ_g^2).*kk
 
         # consumption and saving backwards difference
         cb = Vab_2.^(-1.0/γ)
-        drb = (1-(cb/k.^α))*kk.^α-(δ+σ_g^2).*kk
+        drb = (1-(cb/k.^α))*kk.^α-(δ+n-σ_g^2).*kk
         #println(sb)
         #consumption and derivative of the value function at the steady state
 
-        c0 = kk.^α - (δ+σ_g^2).*kk
+        c0 = kk.^α - (δ+n-σ_g^2).*kk
         Va0 = c0.^(-γ)
 
         # df chooses between the forward or backward difference
@@ -233,7 +236,7 @@ for i in 1:time
         Ib = drb.<0 # negative drift ⇒ backward difference
         I0=(1-If-Ib) # at steady state
 
-        Va_upwind = Vaf_1.*If + Vab_1.*Ib + Va0.*I0 # need to include SS term
+        Va_upwind = Vaf_2.*If + Vab_2.*Ib + Va0.*I0 # need to include SS term
 
         c_2 = Va_upwind.^(-1/γ)
         u = (c_2.^(1-γ))/(1-γ)
@@ -273,33 +276,32 @@ for i in 1:time
       v_2= V
       # need push function to add to an already existing array
       push!(dist, findmax(abs(V_change))[1])
-      if dist[n].< ε
-        println(n)
+      if dist[j].< ε
         push!(Val_2, v_2)
         break
       end
     end
     push!(Σ_g, σ_g)
     # calculate the savings for kk
-    ss_2 = kk.^α - (δ+σ_g^2).*kk
+    ss_2 = kk.^α - (δ+n-σ_g^2).*kk
     push!(savings, ss_2)
     # add in updating
     if indicator ==1
         σ_g = σ_g + .001(σ-σ_g)
     end
+    println(t)
 end
 
 
 # Plot the savings vs. k
 plot(k[1:I-1], c_2[1:I-1], grid=false,
-		xlabel="k", ylabel="s(k)",
+		xlabel="k", ylabel="c(k)",
         xlims=(k_min,k_max),
-		label="Guess", title="Optimal Consumption Policies with")
+		label="Guess", title="Optimal Consumption Policies")
 plot!(k[1:I-1],c_1[1:I-1], label="Actual")
 png("OptimalCons")
 
-ss_2 = kk.^α - (δ+σ_g^2).*kk
-plot(k, ss_2, grid=false,
+plot(k, savings[end], grid=false,
 		xlabel="k", ylabel="s(k)",
         xlims=(k_min,k_max),label="Guess", title="Optimal Savings Policies")
 plot!(k,ss_1, label="Actual")
@@ -321,11 +323,18 @@ plot(k, v_1, grid=false,
         label="known sigma", color=:black, line=:dash,
         legend=:bottomright)
 plot!(k,Val_2[1], label="guess, time=1", color=:blue)
-plot!(k,Val_2[100], label="guess, time=100", color=:green)
-plot!(k,Val_2[50], label="guess, time=50", color=:purple, line=:dot)
+plot!(k,Val_2[end], label="guess, time=10000", color=:orange)
+plot!(k,Val_2[1000], label="guess, time=1000", color=:green)
+plot!(k,Val_2[5000], label="guess, time=5000", color=:purple, line=:dot)
 png("Value_function_vs_k_2")
 
 plot(k, Val_2, grid=false,
 		xlabel="k", ylabel="V(k)",
 		xlims=(k_min,k_max), title="Value Functions", legend=false)
 png("Value_function_vs_k_all")
+
+
+plot([1:time], Σ_g[2:end], grid=false,
+		xlabel="t", ylabel="sigma_g", title="Guess Over time", legend=false)
+plot!([1:time],ones(time).*σ, label="", color=:black)
+png("sigma")
