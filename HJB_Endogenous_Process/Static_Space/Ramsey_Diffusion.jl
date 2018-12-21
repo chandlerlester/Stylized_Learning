@@ -7,21 +7,19 @@
 
 	Algorithm code from Matlab code by Ben Moll:
         http://www.princeton.edu/~moll/HACTproject.htm
+
+        Updated to julia 1.0.0
 ==============================================================================#
 
-using Parameters, Distributions, Plots
+using Distributions, Plots, LinearAlgebra, SparseArrays
 
-@with_kw type Model_parameters
-    γ= 2.0 #gamma parameter for CRRA utility
-    ρ = 0.05 #the discount rate
-    α = 1/3 # the curvature of the production function (cobb-douglas)
-    δ = 0.05 # the depreciation rate
-    σ = 0.5 #variance term
-    n=0.51
-end
+γ= 2.0 #gamma parameter for CRRA utility
+ρ = 0.05 #the discount rate
+α = 1/3 # the curvature of the production function (cobb-douglas)
+δ = 0.05 # the depreciation rate
+σ = 0.5 #variance term
+n=0.51
 
-param = Model_parameters()
-@unpack_Model_parameters(param)
 
 #=============================================================================
  	k our capital follows a process that depends on
@@ -33,11 +31,11 @@ param = Model_parameters()
 k_st = ((α)/(ρ+δ+n-σ^2))^(1/(1-α))
 
 # create the grid for k
-I = 1000 #number of points on grid
+H = 1000 #number of points on grid
 k_min = 0.1*k_st # min value
-k_max = 10.*k_st # max value
-k = linspace(k_min, k_max, I)
-dk = (k_max-k_min)/(I-1)
+k_max = 10*k_st # max value
+k = LinRange(k_min, k_max, H)
+dk = (k_max-k_min)/(H-1)
 k_min_1=k_min
 k_max_1=k_max
 
@@ -51,13 +49,13 @@ max_it = 100
 Δ = 1000
 
 # set up all of these empty matrices
-Vaf_1, Vab_1, c_1 = [zeros(I,1) for i in 1:3]
+Vaf_1, Vab_1, c_1 = [zeros(H,1) for i in 1:3]
 
 y = pdf.(Normal(.99, σ), k)
 plot(k,y, grid=false,
 		xlabel="k", ylabel="Probability",
 		legend=false, color="purple", title="PDF of k")
-png("PDF of k")
+png("PDF_k")
 
 #============================================================================#
 # Now it's time to solve the model, first put in a guess for the value function
@@ -72,22 +70,22 @@ for j = 1:maxit
 
     #Now set up the forward difference
 
-    Vaf_1[1:I-1,:] = (V[2:I, :] - V[1:I-1,:])/dk
-    Vaf_1[I,:] = (k_max.^α - (δ+n-σ^2).*k_max).^(-γ) # imposes a constraint
+    Vaf_1[1:H-1,:] = (V[2:H, :] - V[1:H-1,:])/dk
+    Vaf_1[H,:] .= (k_max.^α - (δ+n-σ^2).*k_max).^(-γ) # imposes a constraint
 
     #backward difference
-    Vab_1[2:I,:] = (V[2:I, :] - V[1:I-1,:])/dk
-    Vab_1[1,:] = (k_min.^α - (δ+n-σ^2).*k_min).^(-γ)
+    Vab_1[2:H,:] = (V[2:H, :] - V[1:H-1,:])/dk
+    Vab_1[1,:] .= (k_min.^α - (δ+n-σ^2).*k_min).^(-γ)
 
     #I_concave = Vab .> Vaf # indicator for whether the value function is concave
 
     # Consumption and savings functions
     cf = Vaf_1.^(-1/γ)
-    drf =(1-(cf/kk.^α))*kk.^α-(δ+n-σ^2).*kk
+    drf =(1 .-(cf/kk.^α))*kk.^α-(δ+n-σ^2).*kk
 
     # consumption and saving backwards difference
     cb = Vab_1.^(-1.0/γ)
-    drb = (1-(cb/k.^α))*kk.^α-(δ+n-σ^2).*kk
+    drb = (1 .-(cb/k.^α))*kk.^α-(δ+n-σ^2).*kk
     #println(sb)
     #consumption and derivative of the value function at the steady state
 
@@ -98,48 +96,48 @@ for j = 1:maxit
 
     If = drf.>0 # positive drift will ⇒ forward difference
     Ib = drb.<0 # negative drift ⇒ backward difference
-    I0=(1-If-Ib) # at steady state
+    I0=(1.0.-If-Ib) # at steady state
 
     Va_upwind = Vaf_1.*If + Vab_1.*Ib + Va0.*I0 # need to include SS term
 
-    c_1 = Va_upwind.^(-1/γ)
+    global c_1 = Va_upwind.^(-1/γ)
     u = (c_1.^(1-γ))/(1-γ)
 
     # Now to constuct the A matrix
-    X = -min(drb, 0)/dk + (σ.*kk/(2*dk))
-    Y = -max(drf, 0)/dk + min(drb, 0)/dk - (σ.*kk/(dk))
-    Z = max(drf, 0)/dk + (σ.*kk/(2*dk))
+    X = -min.(drb, 0)/dk + (σ.*kk/(2*dk))
+    Y = -max.(drf, 0)/dk + min.(drb, 0)/dk - (σ.*kk/(dk))
+    Z = max.(drf, 0)/dk + (σ.*kk/(2*dk))
 
     updiag = 0
-    updiag =[updiag; Z[1:I-1,1]; 0]
+    updiag =[updiag; Z[1:H-1,1]; 0]
     updiag =(updiag[:])
 
-    centerdiag=reshape(Y, I, 1)
+    centerdiag=reshape(Y, H, 1)
     centerdiag = (centerdiag[:]) # for tuples
 
-   lowdiag = X[2:I, 1]
+   lowdiag = X[2:H, 1]
    lowdiag=(lowdiag)
 
    # spdiags in Matlab allows for automatic trimming/adding of zeros
        # spdiagm does not do this
-  A = spdiagm(centerdiag)+ [zeros(1, I); spdiagm(lowdiag) zeros(I-1,1)] + spdiagm(updiag)[2:end, 1:I] # trim first element
+  A = sparse(Diagonal(centerdiag))+ [zeros(1, H); sparse(Diagonal(lowdiag)) zeros(H-1,1)] + sparse(Diagonal(updiag))[2:end, 1:H] # trim first element
 
-  B = (1/Δ + ρ)*speye(I) - A
+  B = (1/Δ + ρ)*sparse(I,H,H) - A
 
-  u_stacked= reshape(u, I, 1)
-  V_stacked = reshape(V,I, 1)
+  u_stacked= reshape(u, H, 1)
+  V_stacked = reshape(V,H, 1)
 
   b = u_stacked + (V_stacked./Δ)
 
   V_stacked = B\b
 
-  V = reshape(V_stacked, I, 1)
+  V = reshape(V_stacked, H, 1)
 
   V_change = V-v_1
 
-  v_1= V
+  global v_1= V
   # need push function to add to an already existing array
-  push!(dist, findmax(abs(V_change))[1])
+  push!(dist, findmax(abs.(V_change))[1])
   if dist[j].< ε
       println("Value Function Converged Iteration=")
       println(j)
@@ -156,7 +154,7 @@ plot(k, c_1, grid=false,
 		xlabel="k", ylabel="s(k)",
         xlims=(k_min,k_max),
 		legend=false, title="Optimal Consumption Policies")
-plot!(k, zeros(I,1), line=:dash, color=:black)
+plot!(k, zeros(H,1), line=:dash, color=:black)
 png("OptimalCons")
 
 
@@ -164,7 +162,7 @@ plot(k, ss_1, grid=false,
 		xlabel="k", ylabel="s(k)",
         xlims=(k_min,k_max),
 		legend=false, title="Optimal Savings Policies")
-plot!(k, zeros(I,1), line=:dash, color=:black)
+plot!(k, zeros(H,1), line=:dash, color=:black)
 png("OptimalSavings")
 
 
@@ -186,44 +184,44 @@ png("Value_function_vs_k")
 
 # create a random distribution to pull from
 Dist = Bernoulli(.45)
-time = 10000 # set the number of external time periods
+T = 10000 # set the number of external time periods
 
 # Add in the misspecification
 σ_g =0.02
 Σ_g=[σ_g]
 # set up all of these empty matrices
-Vaf_2, Vab_2, c_2 = [zeros(I,1) for i in 1:3]
+Vaf_2, Vab_2, c_2 = [zeros(H,1) for i in 1:3]
 Val_2 =[]
 savings=[]
 
 maxit= 30 #set number of iterations (only need 6 to converge)
-for t in 1:time
+for t in 1:T
     # Now it's time to solve the model, first put in a guess for the value function
-    v0 = (kk.^α).^(1-γ)/(1-γ)/ρ
+    global v0 = (kk.^α).^(1-γ)/(1-γ)/ρ
     v_2=v0
-    dist = [] # needs to be in the time loop to work properly
+    global dist = [] # needs to be in the time loop to work properly
     indicator = rand(Dist)
     for j = 1:maxit
         V=v_2
 
         #Now set up the forward difference
 
-        Vaf_2[1:I-1,:] = (V[2:I, :] - V[1:I-1,:])/dk
-        Vaf_2[I,:] = (k_max.^α - (δ+n-σ_g^2).*k_max).^(-γ) # imposes a constraint
+        Vaf_2[1:H-1,:] = (V[2:H, :] - V[1:H-1,:])/dk
+        Vaf_2[H,:] .= (k_max.^α - (δ+n-σ_g^2).*k_max).^(-γ) # imposes a constraint
 
         #backward difference
-        Vab_2[2:I,:] = (V[2:I, :] - V[1:I-1,:])/dk
-        Vab_2[1,:] = (k_min.^α - (δ+n-σ_g^2).*k_min).^(-γ)
+        Vab_2[2:H,:] = (V[2:H, :] - V[1:H-1,:])/dk
+        Vab_2[1,:] .= (k_min.^α - (δ+n-σ_g^2).*k_min).^(-γ)
 
         #I_concave = Vab .> Vaf # indicator for whether the value function is concave
 
         # Consumption and savings functions
         cf = Vaf_2.^(-1/γ)
-        drf =(1-(cf/kk.^α))*kk.^α-(δ+n-σ_g^2).*kk
+        drf =(1 .-(cf/kk.^α))*kk.^α-(δ+n-σ_g^2).*kk
 
         # consumption and saving backwards difference
         cb = Vab_2.^(-1.0/γ)
-        drb = (1-(cb/k.^α))*kk.^α-(δ+n-σ_g^2).*kk
+        drb = (1 .-(cb/k.^α))*kk.^α-(δ+n-σ_g^2).*kk
         #println(sb)
         #consumption and derivative of the value function at the steady state
 
@@ -234,48 +232,48 @@ for t in 1:time
 
         If = drf.>0 # positive drift will ⇒ forward difference
         Ib = drb.<0 # negative drift ⇒ backward difference
-        I0=(1-If-Ib) # at steady state
+        I0=(1.0.-If-Ib) # at steady state
 
         Va_upwind = Vaf_2.*If + Vab_2.*Ib + Va0.*I0 # need to include SS term
 
-        c_2 = Va_upwind.^(-1/γ)
+        global c_2 = Va_upwind.^(-1/γ)
         u = (c_2.^(1-γ))/(1-γ)
 
         # Now to constuct the A matrix
-        X = -min(drb, 0)/dk + (σ_g.*kk/(2*dk))
-        Y = -max(drf, 0)/dk + min(drb, 0)/dk - (σ_g.*kk/(dk))
-        Z = max(drf, 0)/dk + (σ_g.*kk/(2*dk))
+        X = -min.(drb, 0)/dk + (σ_g.*kk/(2*dk))
+        Y = -max.(drf, 0)/dk + min.(drb, 0)/dk - (σ_g.*kk/(dk))
+        Z = max.(drf, 0)/dk + (σ_g.*kk/(2*dk))
 
         updiag = 0
-        updiag =[updiag; Z[1:I-1,1]; 0]
+        updiag =[updiag; Z[1:H-1,1]; 0]
         updiag =(updiag[:])
 
-        centerdiag=reshape(Y, I, 1)
+        centerdiag=reshape(Y, H, 1)
         centerdiag = (centerdiag[:]) # for tuples
 
-       lowdiag = X[2:I, 1]
+       lowdiag = X[2:H, 1]
        lowdiag=(lowdiag)
 
        # spdiags in Matlab allows for automatic trimming/adding of zeros
            # spdiagm does not do this
-      A = spdiagm(centerdiag)+ [zeros(1, I); spdiagm(lowdiag) zeros(I-1,1)] + spdiagm(updiag)[2:end, 1:I] # trim first element
+      A = sparse(Diagonal(centerdiag))+ [zeros(1, H); sparse(Diagonal(lowdiag)) zeros(H-1,1)] + sparse(Diagonal(updiag))[2:end, 1:H] # trim first element
 
-      B = (1/Δ + ρ)*speye(I) - A
+      B = (1/Δ + ρ)*sparse(I,H,H) - A
 
-      u_stacked= reshape(u, I, 1)
-      V_stacked = reshape(V,I, 1)
+      u_stacked= reshape(u, H, 1)
+      V_stacked = reshape(V,H, 1)
 
       b = u_stacked + (V_stacked./Δ)
 
       V_stacked = B\b
 
-      V = reshape(V_stacked, I, 1)
+      V = reshape(V_stacked, H, 1)
 
       V_change = V-v_2
 
       v_2= V
       # need push function to add to an already existing array
-      push!(dist, findmax(abs(V_change))[1])
+      push!(dist, findmax(abs.(V_change))[1])
       if dist[j].< ε
         push!(Val_2, v_2)
         break
@@ -287,32 +285,32 @@ for t in 1:time
     push!(savings, ss_2)
     # add in updating
     if indicator ==1
-        σ_g = σ_g + .001(σ-σ_g)
+        global σ_g = σ_g + .001(σ-σ_g)
     end
     println(t)
 end
 
 
 # Plot the savings vs. k
-plot(k[1:I-1], c_2[1:I-1], grid=false,
+plot(k[1:H-1], c_2[1:H-1], grid=false,
 		xlabel="k", ylabel="c(k)",
         xlims=(k_min,k_max),
 		label="Guess", title="Optimal Consumption Policies")
-plot!(k[1:I-1],c_1[1:I-1], label="Actual")
+plot!(k[1:H-1],c_1[1:H-1], label="Actual")
 png("OptimalCons")
 
 plot(k, savings[end], grid=false,
 		xlabel="k", ylabel="s(k)",
         xlims=(k_min,k_max),label="Guess", title="Optimal Savings Policies")
 plot!(k,ss_1, label="Actual")
-plot!(k, zeros(I,1), line=:dash, color=:black, label="")
+plot!(k, zeros(H,1), line=:dash, color=:black, label="")
 png("OptimalSavings_2")
 
 
 plot(k, savings, grid=false,
 		xlabel="k", ylabel="s(k)",
         xlims=(k_min,k_max),label="", title="Optimal Savings Policies")
-plot!(k, zeros(I,1), line=:dash, color=:black, label="", legend=:bottomleft)
+plot!(k, zeros(H,1), line=:dash, color=:black, label="", legend=:bottomleft)
 plot!(k,ss_1, label="Actual")
 png("OptimalSavings_All")
 
@@ -334,7 +332,7 @@ plot(k, Val_2, grid=false,
 png("Value_function_vs_k_all")
 
 
-plot([1:time], Σ_g[2:end], grid=false,
+plot([1:T], Σ_g[2:end], grid=false,
 		xlabel="t", ylabel="sigma_g", title="Guess Over time", legend=false)
-plot!([1:time],ones(time).*σ, label="", color=:black)
+plot!([1:T],ones(T).*σ, label="", color=:black)
 png("sigma")
