@@ -102,17 +102,17 @@ However, after 10,000 periods we are still some distance from the true value fun
 Convergence over k for a median value of z is less interesting. 
 In this case there is appropriate convergence; however, the difference between the misspecification and the true value is much smaller than in the z dimension. 
 
-![()][./HJB_Exogenous_Process/Value_functions_median_k.png]  
+<img src="./HJB_Exogenous_Process/Value_functions_median_k.png">  
 
-![median z][/HJB_Exogenous_Process/Value_functions_median_Z.png]  
+<img src="./HJB_Exogenous_Process/Value_functions_median_Z.png"> 
 
 The misspecified parameters, $\theta$ and $\sigma$, converge as we would expect. 
 Below is a graph of the values of $\sigma$ and $\theta$ at each updating period, i.e. each period where new information is obtained. 
 This figure shows that our parameters converge how we would expect.
 
-![Value functions][/HJB_Exogenous_Process/sigma.png]  
+<img src="./HJB_Exogenous_Process/sigma.png">
 
-![median z][/HJB_Exogenous_Process/theta.png]   
+<img src="./HJB_Exogenous_Process/theta.png">   
 
 This exercise displayed the type of convergence we would expect in this setting. 
 Thus, we expect that learning rules would perform in a predictable manner in a stochastic continuous time setting. 
@@ -165,18 +165,19 @@ The updating process will continue for 10,000 periods.
 Below are several results, the figures on the left show all the output from all 10,000 iterations of the endogenous learning algorithm. 
 Figures to the right display select output from different periods of the iteration. 
 
-![Value functions for all k][/HJB_Endogenous_Process/Value_function_vs_k_all.png]  
+<img src="./HJB_Endogenous_Process/Value_function_vs_k_all.png"> 
 
-![for some k][/HJB_Exogenous_Process/Value_function_vs_k_2.png] 
+<img src="./HJB_Endogenous_Process/Value_function_vs_k_2.png"> 
 
 
 Using the endogenous learning process, the value function converges to the true estimate over time. 
 In this setting convergence is slow and even after 10,000 periods, the value function is still a small distance from the true value. 
 Convergence is equally slow for some measures such as savings. 
 
-![Value functions for all k][/HJB_Endogenous_Process/OptimalSavings_All.png]  
+<img src="./HJB_Endogenous_Process/OptimalSavings_All.png"> 
 
-![for some k][/HJB_Exogenous_Process/OptimalSavings_2.png] 
+<img src="./HJB_Endogenous_Process/OptimalSavings_2.png"> 
+
 
 From these figures, we can see that the savings policies appear to converge more quickly to the true policy than the value functions converge to the true steady state estimates. 
 This is likely due to the fact that optimal savings policies don't depend as strongly on the parameter $\sigma$. 
@@ -185,8 +186,7 @@ This parameter impacts the value function more directly since it will affect the
 
 Our prediction of $\sigma$ converges in an expected way. 
 
-
-![sig][/HJB_Endogenous_Process/simga.png]
+<img src="./HJB_Endogenous_Process/sigma.png"> 
 
 Verifying that our updating rule works as expected. 
 Even after 10,000 iterations the guess for $\sigma$ is .005 away from the true parameter value, 
