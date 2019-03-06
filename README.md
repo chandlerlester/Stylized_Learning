@@ -1,6 +1,6 @@
-# Continuous Time Project 
+# A Simple Exogenous Learning Rule 
 
-This is some of my 3rd year research on implementing learning algorithms in continuous time. 
+This is some of my preliminary research on implementing learning algorithms in continuous time. 
 
 ## What is in this repository? 
 
