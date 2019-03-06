@@ -102,7 +102,7 @@ However, after 10,000 periods we are still some distance from the true value fun
 Convergence over k for a median value of z is less interesting. 
 In this case there is appropriate convergence; however, the difference between the misspecification and the true value is much smaller than in the z dimension. 
 
-![Value functions][/HJB_Exogenous_Process/Value_functions_median_k.png]  
+![()][./HJB_Exogenous_Process/Value_functions_median_k.png]  
 
 ![median z][/HJB_Exogenous_Process/Value_functions_median_Z.png]  
 
