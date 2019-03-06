@@ -46,14 +46,14 @@ corr = 0.9
 k_st = ((α⋅μ_z)/(ρ+δ))^(1/(1-α))
 
 # create the grid for k
-H = 15 #number of points on grid
+H = 1000 #number of points on grid
 k_min = 0.3*k_st # min value
 k_max = 3*k_st # max value
 k = LinRange(k_min, k_max, H)
 dk = (k_max-k_min)/(H-1)
 
 # create the grid for z
-J = 45
+J = 40
 z_min = μ_z*0.8
 z_max = μ_z*1.2
 z = LinRange(z_min, z_max, J)
@@ -76,7 +76,7 @@ zz = ones(H,1)*z
 
 # use Hto's lemma to find the drift and variance of our optimization equation
 
-μ = (-θ*log.(z).+σ_sq/2).*z # the drift from Hto's lemma
+μ = (-θ*log.(z).+σ_sq/2).*z # the drift from Ito's lemma
 Σ_sq = σ_sq.*z.^2 #the variance from Hto's lemma
 
 max_it = 100
@@ -260,16 +260,16 @@ png("Value_function_vs_z")
 
 
 #  Now the agents misspecify θ and σ^2
-θ_g = .005
-σ_sq_g = 2.0
+global θ_g = .005
+global σ_sq_g = 2.0
 
 # They will update this based on a draw from a binomial
 
 Dist = Bernoulli(.5)
 
-T = 1000 #periods of time for updating
+T = 10000 #periods of time for updating
 
-μ_g = (-θ_g*log.(z)+σ_sq_g/2).*z # the drift from Ito's lemma
+μ_g = (-θ_g*log.(z).+σ_sq_g/2).*z # the drift from Ito's lemma
 Σ_sq_g = σ_sq_g.*z.^2 #the variance from Ito's lemma
 
 max_it = 100
@@ -293,28 +293,28 @@ Vaf_2, Vab_2,c_2 = [zeros(H,J) for i in 1:6]
  # Define the diagonals of this matrix
  updiag_g = zeros(H,1)
  	for j = 1:J
-		global updiag_g =[updiag_g; repmat([ζ_g[j]], H, 1)]
+		global updiag_g =[updiag_g; repeat([ζ_g[j]], H, 1)]
 	end
  updiag_g =(updiag_g[:])
 
 
- centerdiag_g=repmat([χ_g[1]+yy_g[1]],H,1)
+ centerdiag_g=repeat([χ_g[1]+yy_g[1]],H,1)
 	for j = 2:J-1
-		global centerdiag_g = [centerdiag_g; repmat([yy_g[j]], H, 1)]
+		global centerdiag_g = [centerdiag_g; repeat([yy_g[j]], H, 1)]
 	end
- centerdiag_g=[centerdiag_g; repmat([yy_g[J]+ζ_g[J]], H, 1)]
+ centerdiag_g=[centerdiag_g; repeat([yy_g[J]+ζ_g[J]], H, 1)]
  centerdiag_g = centerdiag_g[:]
 
-lowdiag_g = repmat([χ_g[2]], H, 1)
+lowdiag_g = repeat([χ_g[2]], H, 1)
 	for j=3:J
-		global lowdiag_g = [lowdiag_g; repmat([χ_g[j]],H,1)]
+		global lowdiag_g = [lowdiag_g; repeat([χ_g[j]],H,1)]
 	end
 lowdiag_g=lowdiag_g[:]
 
 # spdiags in Matlab allows for automatic trimming/adding of zeros
     # spdiagm does not do this
 
-B_switch_g = sparse(Diagonal(centerdiag_g))+ [zeros(H,H*J);  sparse(Diagonal(lowdiag_g)) zeros(H*(J-1), H)]+ sparse(Diagonal(updiag_g))[(H+1):end,1:(H*J)] # trim off rows of zeros
+global B_switch_g = sparse(Diagonal(centerdiag_g))+ [zeros(H,H*J);  sparse(Diagonal(lowdiag_g)) zeros(H*(J-1), H)]+ sparse(Diagonal(updiag_g))[(H+1):end,1:(H*J)] # trim off rows of zeros
 
 
 # Now it's time to solve the model, first put in a guess for the value function
@@ -325,8 +325,17 @@ maxit= 30 #set number of iterations (only need 6 to converge)
 dist = [] # set up empty array for the convergence criteria
 
 V_tot = []
+V_all=[]
+
+guess_σ=[]
+guess_θ=[]
+
 for t = 1:T
-        indicator = rand(Dist)
+    indicator = rand(Dist)
+	global B_switch_g = B_switch_g
+	global θ_g = θ_g
+	global σ_sq_g = σ_sq_g
+
     for n = 1:maxit
     V=v_2
 
@@ -410,17 +419,57 @@ for t = 1:T
     # need push function to add to an already existing array
     push!(dist, findmax(abs.(V_change))[1])
     if dist[n].< ε
-      println("Value Function Converged Iteration=")
-      println(n)
+      println("loop")
+      println(t)
       break
     end
     end
 
     if indicator == 1
-      B_switch_g = B_switch_g + .01(B_switch - B_switch_g)
+		push!(guess_θ, θ_g)
+		push!(guess_σ, σ_sq_g)
+		θ_g = θ_g + .001(θ-θ_g)
+		σ_sq_g = σ_sq_g + .001(σ_sq-σ_sq_g)
+
+	  μ_g = (-θ_g*log.(z).+σ_sq_g/2).*z # the drift from Ito's lemma
+	  Σ_sq_g = σ_sq_g.*z.^2 #the variance from Ito's lemma
+
+
+	  yy_g = (-Σ_sq_g/dz_sq - μ_g/dz)
+	  χ_g = Σ_sq_g/(2*dz_sq)
+	  ζ_g = μ_g/dz + Σ_sq_g/(2*dz_sq)
+
+
+	  # Define the diagonals of this matrix
+	  updiag_g = zeros(H,1)
+	   for j = 1:J
+		   updiag_g =[updiag_g; repeat([ζ_g[j]], H, 1)]
+	   end
+	  updiag_g =(updiag_g[:])
+
+
+	  centerdiag_g=repeat([χ_g[1]+yy_g[1]],H,1)
+	   for j = 2:J-1
+		   centerdiag_g = [centerdiag_g; repeat([yy_g[j]], H, 1)]
+	   end
+	  centerdiag_g=[centerdiag_g; repeat([yy_g[J]+ζ_g[J]], H, 1)]
+	  centerdiag_g = centerdiag_g[:]
+
+	 lowdiag_g = repeat([χ_g[2]], H, 1)
+	   for j=3:J
+		   lowdiag_g = [lowdiag_g; repeat([χ_g[j]],H,1)]
+	   end
+	 lowdiag_g=lowdiag_g[:]
+
+	 # spdiags in Matlab allows for automatic trimming/adding of zeros
+		 # spdiagm does not do this
+
+	  B_switch_g = sparse(Diagonal(centerdiag_g))+ [zeros(H,H*J);  sparse(Diagonal(lowdiag_g)) zeros(H*(J-1), H)]+ sparse(Diagonal(updiag_g))[(H+1):end,1:(H*J)] # trim off rows of zeros
+
     end
 
     push!(V_tot, v_2[:,20])
+	push!(V_all, v_2)
 end
 
 # calculate the savings for kk
@@ -432,34 +481,70 @@ plot(k, ss_2, grid=false,
         xlims=(k_min,k_max),
 		legend=false, title="Optimal Savings Policies")
 plot!(k, zeros(H,1))
-png("OptimalSavings_2")
+png("OptimalSavings")
 
 plot(k, v_2, grid=false,
 		xlabel="k", ylabel="V(k)",
 		xlims=(k_min,k_max),
-		legend=false, title="Second Value Function over k")
+		legend=false, title="Computed Value Function over k")
 png("Value_function_vs_k_2")
+
+plot(k, v_1, grid=false,
+		xlabel="k", ylabel="V(k)",
+		xlims=(k_min,k_max),
+		legend=false, title="True Value Function over k")
+png("Value_function_vs_k_1")
 
 z = LinRange(z_min, z_max, J)
 plot(z, v_2', grid=false,
 		xlabel="z", ylabel="V(z)",
 		xlims=(z_min,z_max),
-		legend=false, title="Second Value Function over z")
+		legend=false, title="Computed Value Function over z")
 png("Value_function_vs_z_2")
+
+plot(z, v_1', grid=false,
+		xlabel="z", ylabel="V(z)",
+		xlims=(z_min,z_max),
+		legend=false, title="True Value Function over z")
+png("Value_function_vs_z_1")
 
 
 plot(k, V_tot, grid=false,
 		xlabel="k", ylabel="V(k)",
 		xlims=(k_min,k_max),
-		legend=false, title="Second Value Median values of z over k")
+		legend=false, title=" Value Function Median values of z over k")
 png("Value_function_vs_k_2_median")
 
 
 plot(k, v_1[:,20], grid=false,
 		xlabel="k", ylabel="V(k)",
 		xlims=(k_min,k_max), title="Value Function over k for Median z",
-        legend=:bottomright, label="Correct Specification")
-plot!(k,V_tot[500], label="Misspecfication after 500 periods")
-plot!(k,V_tot[1000], label="Misspecfication after 1000 periods", line=:dot)
+        legend=:bottomright, label="Correct Specification", line=:dot)
 plot!(k,V_tot[1], label="Misspecfication", line=:dash, color=:black)
+plot!(k,V_tot[5000], label="Misspecfication after 5,000 periods")
+plot!(k,V_tot[10000], label="Misspecfication after 10,000 periods")
 png("Value_functions_median_Z")
+
+plot(z, v_1[500,:], grid=false,
+		xlabel="z", ylabel="V(z)", title="Value Function over z for Median k",
+        legend=:bottomright, label="Correct Specification",
+		line=:dash,color=:black)
+plot!(z,V_all[1][500,:], label="Misspecfication")
+plot!(z,V_all[5000][500,:], label="Misspecfication after 5,000 periods")
+plot!(z,V_all[10000][500,:], label="Misspecfication after 10,000 periods")
+png("Value_functions_median_k")
+
+plot([1:length(guess_σ)], guess_σ, grid=false,
+		xlabel="Updating Periods", ylabel="sigma_g",
+		title="Guess Over time", label="Misspecfication")
+plot!([1:length(guess_σ)],ones(length(guess_σ)).*σ_sq,
+		label="True Value", color=:black, line=:dash)
+png("sigma")
+
+plot([1:length(guess_σ)], guess_θ, grid=false,
+		xlabel="Updating Periods", ylabel="theta_g",
+		title="Guess Over time", label="Misspecfication",
+		legend=:bottomright)
+plot!([1:length(guess_σ)],ones(length(guess_σ)).*θ,
+		label="True Value", color=:black, line=:dash)
+png("theta")

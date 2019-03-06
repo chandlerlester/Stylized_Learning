@@ -39,6 +39,15 @@ dk = (k_max-k_min)/(H-1)
 k_min_1=k_min
 k_max_1=k_max
 
+
+γ= 2.0 #gamma parameter for CRRA utility
+ρ = 0.05 #the discount rate
+α = 1/3 # the curvature of the production function (cobb-douglas)
+δ = 0.05 # the depreciation rate
+σ = 0.5 #variance term
+n=0.51
+
+
 #create matrices for k and z
 kk = k*1
 
@@ -290,49 +299,67 @@ for t in 1:T
     println(t)
 end
 
-
 # Plot the savings vs. k
 plot(k[1:H-1], c_2[1:H-1], grid=false,
 		xlabel="k", ylabel="c(k)",
-        xlims=(k_min,k_max),
+        xlims=(k[1],k[end]),legend=:bottomright,
 		label="Guess", title="Optimal Consumption Policies")
-plot!(k[1:H-1],c_1[1:H-1], label="Actual")
+plot!(k[1:H-1],c_1[1:H-1], label="Actual", line=:dash)
 png("OptimalCons")
 
-plot(k, savings[end], grid=false,
+#=
+plot(k[1:H-1],cons[1][1:H-1], grid=false,
+		xlabel="k", ylabel="c(k)",
+        xlims=(k[1],k[end]),label="Initial", legend=:bottomright,
+        title="Optimal Consumption Policies", color=:hotpink)
+plot!(k[1:H-1],cons[500][1:H-1], label="500th period", color=:blue)
+plot!(k[1:H-1],cons[end][1:H-1], label="10,000th period", color=:green)
+plot!(k[1:H-1],c_1[1:H-1], label="Actual", line=:dot, color=:black)
+png("OptimalCons_2")
+=#
+
+plot(k, savings[1], grid=false,
 		xlabel="k", ylabel="s(k)",
-        xlims=(k_min,k_max),label="Guess", title="Optimal Savings Policies")
-plot!(k,ss_1, label="Actual")
-plot!(k, zeros(H,1), line=:dash, color=:black, label="")
+        xlims=(k[1],k[end]),label="Initial",
+        title="Optimal Savings Policies",
+		color=:hotpink, legend=:bottomleft)
+plot!(k, zeros(H,1), color=:black, label="")
+plot!(k,savings[1000], label="1,000 period", color=:blue)
+plot!(k,savings[5000], label="5,000 period", color=:green)
+plot!(k,savings[10000], label="10,000 period", color=:orange)
+plot!(k,ss_1, label="Actual", line=:dot, color=:black)
 png("OptimalSavings_2")
 
 
 plot(k, savings, grid=false,
 		xlabel="k", ylabel="s(k)",
-        xlims=(k_min,k_max),label="", title="Optimal Savings Policies")
+        xlims=(k[1],k[end]),label="", title="Optimal Savings Policies")
 plot!(k, zeros(H,1), line=:dash, color=:black, label="", legend=:bottomleft)
-plot!(k,ss_1, label="Actual")
+plot!(k,ss_1, color=:black, label="Actual")
 png("OptimalSavings_All")
 
 
 plot(k, v_1, grid=false,
 		xlabel="k", ylabel="V(k)",
-		xlims=(k_min,k_max), title="Value Functions",
-        label="known sigma", color=:black, line=:dash,
-        legend=:bottomright)
-plot!(k,Val_2[1], label="guess, time=1", color=:blue)
-plot!(k,Val_2[end], label="guess, time=10000", color=:orange)
-plot!(k,Val_2[1000], label="guess, time=1000", color=:green)
-plot!(k,Val_2[5000], label="guess, time=5000", color=:purple, line=:dot)
+		xlims=(k[1],k[end]), title="Value Functions",
+        legend=:bottomright, color=:black, line=:dash,
+        label="Actual")
+plot!(k,Val_2[1], label="Initial", color=:hotpink)
+plot!(k,Val_2[1000], label="1,000 period", color=:blue)
+plot!(k,Val_2[5000], label="5,000 period", color=:green)
+plot!(k,Val_2[end], label="10,000 period", color=:orange)
 png("Value_function_vs_k_2")
+
 
 plot(k, Val_2, grid=false,
 		xlabel="k", ylabel="V(k)",
-		xlims=(k_min,k_max), title="Value Functions", legend=false)
+		xlims=(k[1],k[end]), title="Value Functions",
+		label="", legend=:bottomright)
+plot!(k,v_1, label="Actual", color=:black)
 png("Value_function_vs_k_all")
 
 
 plot([1:T], Σ_g[2:end], grid=false,
 		xlabel="t", ylabel="sigma_g", title="Guess Over time", legend=false)
-plot!([1:T],ones(T).*σ, label="", color=:black)
+plot!([1:T],ones(T).*σ, label="True Value", color=:black, line=:dash)
 png("sigma")
