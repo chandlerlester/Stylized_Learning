@@ -3,6 +3,8 @@
 
 This is some of my preliminary research on implementing learning algorithms in continuous time. 
 
+For a more readable version of this README got ![here](http://chandlerlester.com/Simple_Exogenous_Rule/)
+
 # What is in this repository? 
 
 Here I have some code that implements an exogenous learning rule on two simple Ramsey models. 
