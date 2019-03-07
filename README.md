@@ -3,7 +3,7 @@
 
 This is some of my preliminary research on implementing learning algorithms in continuous time. 
 
-For a more readable version of this README go ![here](http://chandlerlester.com/Simple_Exogenous_Rule/). 
+For a more readable version of this README go ![here](chandlerlester.com/Simple_Exogenous_Rule/). 
 
 # What is in this repository? 
 
