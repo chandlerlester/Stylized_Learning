@@ -1,11 +1,5 @@
----
-title: "A Simple Exogenous Learning Rule"
-output:
-  html_document:
-    toc: true
-    toc_depth: 2 
-    toc_float: true
----
+
+# A Simple Exogenous Learning Rule
 
 This is some of my preliminary research on implementing learning algorithms in continuous time. 
 
