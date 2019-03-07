@@ -1,15 +1,22 @@
-# A Simple Exogenous Learning Rule 
+---
+title: "A Simple Exogenous Learning Rule"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2 
+    toc_float: true
+---
 
 This is some of my preliminary research on implementing learning algorithms in continuous time. 
 
-## What is in this repository? 
+# What is in this repository? 
 
 Here I have some code that implements an exogenous learning rule on two simple Ramsey models. 
 
 This repo contains the code, and figures from this simple exercise. 
 
 
-## Exogenous Learning Rule Setup 
+# Exogenous Learning Rule Setup 
 This exercise will focus on an ``exogenous" learning rule. 
 In this setting we build models where our agents have a misperception of the true underlying parameters, 
 then our agents receive information dumps where they get some insight into the true model parameters. 
@@ -35,7 +42,7 @@ Two models will be explored in the following sections.
 The first examines the exogenous learning rule when the unknown model parameter is part of the exogenous stochastic process.
 Next, the exogenous learning rule is applied to a model with misspecification in an endogenous stochastic process for the evolution of capital stock. 
 
-## Learning the Exogenous Process
+# Learning the Exogenous Process
 
 There is a representative agent that makes consumption choices $c$ and has capital stock $k$. The state of the economy depends on the flow of capital stock. The agent has standard preferences over utility flows based on capital discounted at rate $\rho\geq 0$. This can be written as the following equation: 
 \begin{equation}
@@ -59,7 +66,7 @@ The utility function used throughout this project will have constant relative ri
 \end{equation}
 With $\gamma >0$.
 
-## Stationary Equilibrium 
+# Stationary Equilibrium 
 $$\rho V(k,z) = \underset{c}{\max\hspace{1ex}}u(c) + \partial_{k}V(k,z)\cdot\big(z_{t}f(k) - \delta k - c\big) + 
 +\partial_{z}V(k,z)\cdot\bigg(-\theta\log(z)+\frac{\sigma^2}{2}\bigg)z
 + \partial_{zz}V(k,z)\cdot\frac{1}{2}\sigma^2 z^2$$ 
@@ -93,7 +100,7 @@ The information will be given to an agent with a draw from a standard Bernoulli 
 \end{eqnarray}
 
 
-## Exogenous Process Results
+# Exogenous Process Results
 
 Below are the convergence results for the exogenous learning rule in this setting. 
 The following figure displays the value function over z and k. 
@@ -117,7 +124,7 @@ This figure shows that our parameters converge how we would expect.
 This exercise displayed the type of convergence we would expect in this setting. 
 Thus, we expect that learning rules would perform in a predictable manner in a stochastic continuous time setting. 
 
-## Learning the Endogenous Process
+# Learning the Endogenous Process
 After examining the exogenous learning rule's impacts on a model with a misspecified exogenous process, 
 we investigate a model with a misspecified endogenous process. 
 In this model, we have a diffusion process that summarizes the evolution of capital stock. 
@@ -137,7 +144,7 @@ Here consumption, $c_{t} \geq 0$ for all periods. The agent's capital stock will
 \end{equation}
 Here $n$ measures the growth of the work force and $dW_{t}$ is the increment of a Wiener process. In this setting, $f(k) - (\delta + \sigma^2)k - c$ summarizes the drift of capital and $\sigma k$ describes the variance. \newline
 
-## Stationary Equilibrium
+# Stationary Equilibrium
 \begin{equation}
     \rho V(k) = \underset{c}{\max\hspace{1ex}}u(c) + V'(k)\cdot\big(f(k) - (\delta + n -\sigma^2)k - c\big) +\frac{1}{2} V''(k)\cdot(\sigma k)
 \end{equation}
