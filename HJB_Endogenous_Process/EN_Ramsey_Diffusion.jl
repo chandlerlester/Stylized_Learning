@@ -2,9 +2,6 @@
     Code for solving the Hamiltonian Jacboi Bellman for
 	   an Ramsey Model with a diffusion process for capital
 
-       This version of the code updates the grid for capital
-        along with estimates for the unknown parameter
-
 	Algorithm code from Matlab code by Ben Moll:
         http://www.princeton.edu/~moll/HACTproject.htm
 
