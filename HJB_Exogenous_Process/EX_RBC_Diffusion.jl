@@ -267,7 +267,7 @@ global σ_sq_g = 2.0
 
 Dist = Bernoulli(.5)
 
-T = 10000 #periods of time for updating
+T = 1000 #periods of time for updating
 
 μ_g = (-θ_g*log.(z).+σ_sq_g/2).*z # the drift from Ito's lemma
 Σ_sq_g = σ_sq_g.*z.^2 #the variance from Ito's lemma
@@ -335,7 +335,8 @@ for t = 1:T
 	global B_switch_g = B_switch_g
 	global θ_g = θ_g
 	global σ_sq_g = σ_sq_g
-
+	push!(guess_θ, θ_g)
+	push!(guess_σ, σ_sq_g)
     for n = 1:maxit
     V=v_2
 
@@ -426,10 +427,8 @@ for t = 1:T
     end
 
     if indicator == 1
-		push!(guess_θ, θ_g)
-		push!(guess_σ, σ_sq_g)
-		θ_g = θ_g + .001(θ-θ_g)
-		σ_sq_g = σ_sq_g + .001(σ_sq-σ_sq_g)
+		θ_g = θ_g + .01(θ-θ_g)
+		σ_sq_g = σ_sq_g + .01(σ_sq-σ_sq_g)
 
 	  μ_g = (-θ_g*log.(z).+σ_sq_g/2).*z # the drift from Ito's lemma
 	  Σ_sq_g = σ_sq_g.*z.^2 #the variance from Ito's lemma
@@ -521,8 +520,8 @@ plot(k, v_1[:,20], grid=false,
 		xlims=(k_min,k_max), title="Value Function over k for Median z",
         legend=:bottomright, label="Correct Specification", line=:dot)
 plot!(k,V_tot[1], label="Misspecfication", line=:dash, color=:black)
-plot!(k,V_tot[5000], label="Misspecfication after 5,000 periods")
-plot!(k,V_tot[10000], label="Misspecfication after 10,000 periods")
+plot!(k,V_tot[500], label="Misspecfication after 500 periods")
+plot!(k,V_tot[1000], label="Misspecfication after 1,000 periods")
 png("Value_functions_median_Z")
 
 plot(z, v_1[500,:], grid=false,
@@ -530,19 +529,19 @@ plot(z, v_1[500,:], grid=false,
         legend=:bottomright, label="Correct Specification",
 		line=:dash,color=:black)
 plot!(z,V_all[1][500,:], label="Misspecfication")
-plot!(z,V_all[5000][500,:], label="Misspecfication after 5,000 periods")
-plot!(z,V_all[10000][500,:], label="Misspecfication after 10,000 periods")
+plot!(z,V_all[500][500,:], label="Misspecfication after 500 periods")
+plot!(z,V_all[1000][500,:], label="Misspecfication after 1,000 periods")
 png("Value_functions_median_k")
 
 plot([1:length(guess_σ)], guess_σ, grid=false,
-		xlabel="Updating Periods", ylabel="sigma_g",
+		xlabel="Periods", ylabel="sigma_g",
 		title="Guess Over time", label="Misspecfication")
 plot!([1:length(guess_σ)],ones(length(guess_σ)).*σ_sq,
 		label="True Value", color=:black, line=:dash)
 png("sigma")
 
 plot([1:length(guess_σ)], guess_θ, grid=false,
-		xlabel="Updating Periods", ylabel="theta_g",
+		xlabel="Periods", ylabel="theta_g",
 		title="Guess Over time", label="Misspecfication",
 		legend=:bottomright)
 plot!([1:length(guess_σ)],ones(length(guess_σ)).*θ,

@@ -190,7 +190,7 @@ png("Value_function_vs_k")
 
 # create a random distribution to pull from
 Dist = Bernoulli(.45)
-T = 10000 # set the number of external time periods
+T = 1000 # set the number of external time periods
 
 # Add in the misspecification
 σ_g =0.02
@@ -291,7 +291,7 @@ for t in 1:T
     push!(savings, ss_2)
     # add in updating
     if indicator ==1
-        global σ_g = σ_g + .001(σ-σ_g)
+        global σ_g = σ_g + .01(σ-σ_g)
     end
     println(t)
 end
@@ -321,9 +321,9 @@ plot(k, savings[1], grid=false,
         title="Optimal Savings Policies",
 		color=:hotpink, legend=:bottomleft)
 plot!(k, zeros(H,1), color=:black, label="")
-plot!(k,savings[1000], label="1,000 period", color=:blue)
-plot!(k,savings[5000], label="5,000 period", color=:green)
-plot!(k,savings[10000], label="10,000 period", color=:orange)
+plot!(k,savings[100], label="1,000 period", color=:blue)
+plot!(k,savings[500], label="5,000 period", color=:green)
+plot!(k,savings[1000], label="10,000 period", color=:orange)
 plot!(k,ss_1, label="Actual", line=:dot, color=:black)
 png("OptimalSavings_2")
 
@@ -342,8 +342,8 @@ plot(k, v_1, grid=false,
         legend=:bottomright, color=:black, line=:dash,
         label="Actual")
 plot!(k,Val_2[1], label="Initial", color=:hotpink)
-plot!(k,Val_2[1000], label="1,000 period", color=:blue)
-plot!(k,Val_2[5000], label="5,000 period", color=:green)
+plot!(k,Val_2[100], label="1,000 period", color=:blue)
+plot!(k,Val_2[500], label="5,000 period", color=:green)
 plot!(k,Val_2[end], label="10,000 period", color=:orange)
 png("Value_function_vs_k_2")
 
