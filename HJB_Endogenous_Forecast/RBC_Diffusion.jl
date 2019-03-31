@@ -8,7 +8,7 @@
         Updated to Julia 1.0.0
 ==============================================================================#
 
-using Parameters, Distributions, Plots, SparseArrays, LinearAlgebra, DifferentialEquations
+using Distributions, Plots, SparseArrays, LinearAlgebra, DifferentialEquations
 
 include("B_Switch.jl")
 
@@ -23,18 +23,19 @@ include("B_Switch.jl")
  		dz_t = -η z_t dt + σ⋅dw_t  =#
 
 η = .25
-σ = 1.0
-T = 1000 # Forecasting periods/ length of process
+σ = 1.25
+T = 200 # Forecasting periods/ length of process
 μ_z = 0
+T_obs= 50 # set the number of inital observations
 
 # Create a continuous time OrnsteinUhlenbeckProcess
 global OU_process = OrnsteinUhlenbeckProcess(η, 0.0, σ, 0.0, 0.0)
-global dt_inv = 4
-global dt= 1/4
+global dt_inv = 5
+global dt= 1/5
 OU_process.dt = dt
 
 setup_next_step!(OU_process)
-for j in 1:(dt_inv*T + (dt_inv-1))
+for j in 1:(dt_inv*T + T_obs + dt_inv -1)
     accept_step!(OU_process,dt)
 end
 
@@ -230,11 +231,22 @@ png("OptimalSavings")
 # Our Agent will now misspecify η the drift parameter from our process
 # They will then forecast an AR(1) and use this to update
 
-η_g = 0.8
-μ = -η_g.*z # the drift from Ito's lemma
+# Use the initai points to form a OLS estimate of our coefficients
+
+X = OU_process.u[1:T_obs]
+Y = OU_process.u[1+dt_inv:T_obs+dt_inv]
+ϵ_OU = rand(Normal(0, 1), T_obs)
+
+η_g = 1-(X'X)^(-1) * X'Y
+σ_g = cov(Y-η_g*X)
+
+R_g = [cov(X,X) cov(X,ϵ_OU); cov(ϵ_OU,X) σ_g]
+
+
 global B_switch_G = B_switch(μ, Σ_sq, dz, H)
 
-guesses=zeros(1,T)
+guesses_η,guesses_σ =[zeros(1,T) for i in 1:2]
+
 Value_functions=[]
 
 
@@ -243,15 +255,17 @@ v =v0
 for t = 1:T
 	global v=v0
 	global η_g = η_g
-	guesses[1,t] = η_g
+	global σ_g =σ_g
+	global R_g = R_g
+	guesses_η[1,t] = η_g
+	guesses_σ[1,t] = σ_g
 	μ = -η_g.*z # the drift from Ito's lemma
+	Σ_sq = (σ_g^2).*z.^2
 	global B_switch_G = B_switch(μ, Σ_sq, dz, H)
 
 	for n = 1:maxit
 	    V=v
-
 	    #Now set up the forward difference
-
 	    Vaf[1:H-1,:] = (V[2:H, :] - V[1:H-1,:])/dk
 	    Vaf[H,:] = (exp.(z).*k_max.^α .- δ.*k_max).^(-γ) # imposes a constraint
 
@@ -337,38 +351,54 @@ for t = 1:T
 	end
 
 	push!(Value_functions, v)
-	x = OU_process.u[1:t*dt_inv]
-	y= OU_process.u[(1+dt_inv):(t+1)*dt_inv]
+	x = OU_process.u[T_obs+(t-1)*dt_inv:T_obs+(t)*dt_inv]
+	y= OU_process.u[T_obs+(t)*dt_inv:T_obs+(t+1)*dt_inv]
+	ϵ_OU = rand(Normal(0, 1), dt_inv+1)
 
-	η_g = 1-(x'x)^(-1)*(x'y)
+	ϕ_g = [1-η_g; σ_g]# prediction
+	ϕ = [.75; 1.25] # True values
+	W = [x ϵ_OU]
 
-	#η_g = η_g + 0.01*(update-η_g)
+	for j in 1:dt_inv+1
+		ϕ_g = ϕ_g + 0.01 .*R_g^(-1)*W[j,:]*(ϕ-ϕ_g)'*W[j,:]
+		global R_g = R_g + 0.01 .*(W[j,:]*W[j,:]' - R_g)
+	end
+
+	global η_g = 1-ϕ_g[1]
+	global σ_g = ϕ_g[2]
 
 	println("loop:$(t)")
 end
 
 
-plot(guesses[:], label="Estimates",
+plot(guesses_η[:], label="Estimates",
 title="\$ \\textrm{Estimate of } \\eta \\textrm{ over time}\$")
 plot!(η.*ones(T,1), label="True value")
 png("Eta_estimates")
 
+plot(guesses_σ[:], label="Estimates",
+title="\$ \\textrm{Estimate of } \\sigma \\textrm{ over time}\$")
+plot!(σ.*ones(T,1), label="True value")
+png("sigma_estimates")
+
 
 plot(Value_functions[1][:,20], label="Period 1",
-title="Value Functions For median Z", grid=false, xlabel="k")
+title="Value Functions For median Z", grid=false,
+legend=:bottomright, xlabel="k")
+plot!(Value_functions[10][:,20], label="Period 10")
+plot!(Value_functions[50][:,20], label="Period 50")
 plot!(Value_functions[100][:,20], label="Period 100")
-plot!(Value_functions[300][:,20], label="Period 300")
-plot!(Value_functions[500][:,20], label="Period 500")
-plot!(Value_functions[1000][:,20], label="Period 1000")
+plot!(Value_functions[200][:,20], label="Period 200")
 plot!(v1[:,20], label="True Value", line=:dash, color=:black)
 png("Value_med_z")
 
 plot(Value_functions[1][50,:], label="Period 1",
-title="Value Functions For median K", grid=false, xlabel="z")
+title="Value Functions For median K", grid=false,
+ legend=:bottomright, xlabel="z")
+plot!(Value_functions[10][50,:], label="Period 10")
 plot!(Value_functions[50][50,:], label="Period 50")
 plot!(Value_functions[100][50,:], label="Period 100")
-plot!(Value_functions[500][50,:], label="Period 500")
-plot!(Value_functions[1000][50,:], label="Period 1000")
+plot!(Value_functions[200][50,:], label="Period 200")
 plot!(v1[50,:], label="True Value", line=:dash, color=:black)
 png("Value_med_k")
 
