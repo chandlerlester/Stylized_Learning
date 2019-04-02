@@ -24,9 +24,9 @@
 
 function B_switch(μ, Σ_sq, dz, H)
 	 dz_sq = dz^2
-	 yy = (-Σ_sq/dz_sq - μ/dz)
+	 yy = (-Σ_sq/dz_sq .- μ/dz)
 	 χ = Σ_sq/(2*dz_sq)
-	 ζ = μ/dz + Σ_sq/(2*dz_sq)
+	 ζ = μ/dz .+ Σ_sq/(2*dz_sq)
 
 
 	 # Define the Diagonals of this matrix

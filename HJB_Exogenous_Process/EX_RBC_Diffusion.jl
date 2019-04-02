@@ -19,7 +19,7 @@ using Distributions, Plots, LinearAlgebra, SparseArrays
 
 # Z our state variable follows this process
 	#= for this process:
-	 		dlog(z) = -θ⋅log(z)dt + σ^2⋅dw
+	 		dlog(z) = -θ⋅log(z)dt + σ⋅dw
 		and
 			log(z)∼N(0,var) where var = σ^2/(2⋅θ) =#
 var = 0.07
@@ -74,7 +74,7 @@ z= convert(Array, z)'
 kk = k*ones(1,J)
 zz = ones(H,1)*z
 
-# use Hto's lemma to find the drift and variance of our optimization equation
+# use Ito's lemma to find the drift and variance of our optimization equation
 
 μ = (-θ*log.(z).+σ_sq/2).*z # the drift from Ito's lemma
 Σ_sq = σ_sq.*z.^2 #the variance from Hto's lemma
