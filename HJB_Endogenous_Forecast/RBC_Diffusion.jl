@@ -12,7 +12,7 @@ using Distributions, Plots, SparseArrays, LinearAlgebra, DifferentialEquations
 
 using Random
 
-Random.seed!(7891)
+Random.seed!(78910)
 
 include("B_Switch.jl")
 
@@ -22,20 +22,18 @@ include("B_Switch.jl")
 δ = 0.05 # the depreciation rate
 
 
-# Z our state variable follows this process
-#= for this process:
- 		dz_t = -η z_t dt + σ⋅dw_t  =#
+# Z our state variable follows a stochastic process
 var = 0.07
 μ_z = exp(var/2)
 corr = 0.9
 θ = -log(corr)
-σ = 5*θ*corr
+σ = 2*θ*corr
 T = 200 # Forecasting periods/ length of process
-T_obs= 10 # set the number of inital observations
+T_obs= 20 # set the number of inital observations
 
 # Create a continuous time OrnsteinUhlenbeckProcess
 global OU_process = OrnsteinUhlenbeckProcess(θ, 0.0, σ, 0.0, 0.0)
-global dt_inv = 3
+global dt_inv = 5
 global dt= 1/dt_inv
 OU_process.dt = dt
 
@@ -384,6 +382,11 @@ title="\$ \\textrm{Estimate of } \\sigma \\textrm{ over time}\$")
 plot!(σ.*ones(T,1), label="True value")
 png("sigma_estimates")
 
+drift_z = (-guesses_θ[:]'.*log(z[20])+guesses_σ[:]'.^2/2).*z[20]
+plot(drift_z[:], label="Estimates",
+title="Drift for median Z")
+plot!(μ[20].*ones(T,1), label="True value")
+png("drift_estimates")
 
 plot(Value_functions[1][:,20], label="Period 1",
 title="Value Functions For median Z", grid=false,
