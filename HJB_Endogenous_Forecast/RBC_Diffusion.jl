@@ -29,7 +29,7 @@ corr = 0.9
 θ = -log(corr)
 σ = 2*θ*corr
 T = 200 # Forecasting periods/ length of process
-T_obs= 20 # set the number of inital observations
+T_obs= 10 # set the number of inital observations
 
 # Create a continuous time OrnsteinUhlenbeckProcess
 global OU_process = OrnsteinUhlenbeckProcess(θ, 0.0, σ, 0.0, 0.0)
@@ -391,21 +391,22 @@ png("drift_estimates")
 plot(Value_functions[1][:,20], label="Period 1",
 title="Value Functions For median Z", grid=false,
 legend=:bottomright, xlabel="k")
+plot!(Value_functions[2][:,20], label="Period 2")
 plot!(Value_functions[5][:,20], label="Period 5")
-plot!(Value_functions[10][:,20], label="Period 10")
 plot!(Value_functions[50][:,20], label="Period 50")
-plot!(Value_functions[end][:,20], label="Period 500")
+plot!(Value_functions[end][:,20], label="Period 200")
 plot!(v1[:,20], label="True Value", line=:dash, color=:black)
 png("Value_med_z")
 
 plot(Value_functions[1][50,:], label="Period 1",
 title="Value Functions For median K", grid=false,
- legend=:topleft, xlabel="z")
+ legend=:bottomright, xlabel="z")
 plot!(Value_functions[5][50,:], label="Period 5")
 plot!(Value_functions[10][50,:], label="Period 10")
-plot!(Value_functions[50][50,:], label="Period 50")
-plot!(Value_functions[end][50,:], label="Period 500")
-plot!(v1[50,:], label="True Value", line=:dash, color=:black)
+plot!(Value_functions[50][50,:], label="Period 50", color=:orange)
+plot!(Value_functions[end][50,:], label="Period 200", color=:purple,linewidth = 1.25)
+plot!(v1[50,:], label="True Value", line=:dash, color=:black,
+	ylims=(findmin(v1[50,:])[1],findmax(v1[50,:])[1]))
 png("Value_med_k")
 
 
