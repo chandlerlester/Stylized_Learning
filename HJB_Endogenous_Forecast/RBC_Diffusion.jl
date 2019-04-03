@@ -10,6 +10,10 @@
 
 using Distributions, Plots, SparseArrays, LinearAlgebra, DifferentialEquations
 
+using Random
+
+Random.seed!(7891)
+
 include("B_Switch.jl")
 
 γ= 2.0 #gamma parameter for CRRA utility
@@ -25,14 +29,14 @@ var = 0.07
 μ_z = exp(var/2)
 corr = 0.9
 θ = -log(corr)
-σ = 2*θ*corr
+σ = 5*θ*corr
 T = 200 # Forecasting periods/ length of process
-T_obs= 20 # set the number of inital observations
+T_obs= 10 # set the number of inital observations
 
 # Create a continuous time OrnsteinUhlenbeckProcess
 global OU_process = OrnsteinUhlenbeckProcess(θ, 0.0, σ, 0.0, 0.0)
-global dt_inv = 5
-global dt= 1/5
+global dt_inv = 3
+global dt= 1/dt_inv
 OU_process.dt = dt
 
 setup_next_step!(OU_process)
@@ -81,7 +85,7 @@ dz_sq = dz^2
 
 # Check the pdf to make sure our grid isn't cutting off the tails of
 	# our distribution
-y = pdf.(Normal(0, σ^2), z)
+y = pdf.(LogNormal(0, var), z)
 plot(z,y, grid=false,
 		xlabel="z", ylabel="Probability",
 		legend=false, color="purple", title="PDF of z")
@@ -387,7 +391,7 @@ legend=:bottomright, xlabel="k")
 plot!(Value_functions[5][:,20], label="Period 5")
 plot!(Value_functions[10][:,20], label="Period 10")
 plot!(Value_functions[50][:,20], label="Period 50")
-plot!(Value_functions[end][:,20], label="Period 200")
+plot!(Value_functions[end][:,20], label="Period 500")
 plot!(v1[:,20], label="True Value", line=:dash, color=:black)
 png("Value_med_z")
 
@@ -397,14 +401,14 @@ title="Value Functions For median K", grid=false,
 plot!(Value_functions[5][50,:], label="Period 5")
 plot!(Value_functions[10][50,:], label="Period 10")
 plot!(Value_functions[50][50,:], label="Period 50")
-plot!(Value_functions[end][50,:], label="Period 200")
+plot!(Value_functions[end][50,:], label="Period 500")
 plot!(v1[50,:], label="True Value", line=:dash, color=:black)
 png("Value_med_k")
 
 
 # Compare the actual process and the forecast
 
-OU_forecast = OrnsteinUhlenbeckProcess(η_g, 0.0, σ_g, 0.0, 0.0)
+OU_forecast = OrnsteinUhlenbeckProcess(θ_g, 0.0, σ_g, 0.0, 0.0)
 OU_forecast.dt = dt
 
 setup_next_step!(OU_forecast)
