@@ -2,7 +2,7 @@
     Code for solving the Hamiltonian Jacboi Bellman for
 	   an RBC model with a Diffusion process
 
-	Translated Julia code from Matlab code by Ben Moll:
+	Orignially based on Matlab code from Ben Moll:
         http://www.princeton.edu/~moll/HACTproject.htm
 
         Updated to Julia 1.0.0
@@ -12,7 +12,7 @@ using Distributions, Plots, SparseArrays, LinearAlgebra, DifferentialEquations
 
 using Random
 
-Random.seed!(78910)
+Random.seed!(1236789765432)
 
 include("B_Switch.jl")
 
@@ -23,13 +23,12 @@ include("B_Switch.jl")
 
 
 # Z our state variable follows a stochastic process
-var = 0.07
-μ_z = exp(var/2)
+
 corr = 0.9
 θ = -log(corr)
-σ = 2*θ*corr
-T = 200 # Forecasting periods/ length of process
-T_obs= 10 # set the number of inital observations
+σ = sqrt(2*θ*corr)
+T = 250 # Forecasting periods/ length of process
+T_obs= 50# set the number of inital observations
 
 # Create a continuous time OrnsteinUhlenbeckProcess
 global OU_process = OrnsteinUhlenbeckProcess(θ, 0.0, σ, 0.0, 0.0)
@@ -47,6 +46,10 @@ plot(OU_process.t,OU_process.u, grid=false,
 		xlabel="Time", ylabel="z",
 		legend=false, color="red", title="Ornstein-Uhlenbeck Process for z")
 png("OU_Process")
+
+# Step up grid space
+var = mean(OU_process.u)
+μ_z = exp(var/2)
 
 #=============================================================================
  	k our capital follows a process that depends on z,
@@ -75,7 +78,7 @@ dk = (k_max-k_min)/(H-1)
 # create the grid for z
 J = 40
 z_min = μ_z*0.8
-z_max = μ_z*1.2
+z_max = μ_z.*1.2
 z = LinRange(z_min, z_max, J)
 dz = (z_max-z_min)/(J-1)
 dz_sq = dz^2
@@ -236,16 +239,18 @@ png("OptimalSavings")
 
 # Use the initai points to form a OLS estimate of our coefficients
 
-X = OU_process.u[1:T_obs]
+X = [ones(T_obs,1) OU_process.u[1:T_obs]]
 Y = OU_process.u[1+dt_inv:T_obs+dt_inv]
 ϵ_OU = rand(Normal(0, 1), T_obs)
 
-θ_g = 1-(X'X)^(-1) * X'Y
-σ_g = cov(Y-θ_g*X)
+η_g = (X'X)^(-1) * X'Y
+θ_g = 1-η_g[2]
+const_g =η_g[1]
 
-R_g = [cov(X,X) cov(X,ϵ_OU); cov(ϵ_OU,X) σ_g]
+σ_g = sqrt(cov(Y-X*η_g))
 
-guesses_θ,guesses_σ =[zeros(1,T) for i in 1:2]
+R_g = [X ϵ_OU]'*[X ϵ_OU]
+guesses_θ,guesses_σ, guesses_const =[zeros(1,T) for i in 1:3]
 
 Value_functions=[]
 
@@ -255,10 +260,13 @@ v =v0
 for t = 1:T
 	global v=v0
 	global θ_g = θ_g
+	global const_g = const_g
 	global σ_g =σ_g
 	global R_g = R_g
 	guesses_θ[1,t] = θ_g
 	guesses_σ[1,t] = σ_g
+	guesses_const[1,t]=const_g
+
 	μ = (-θ_g*log.(z).+σ_g.^2/2).*z # the drift from Ito's lemma
 	Σ_sq = σ_g.^2 .*z.^2#the variance from Ito's lemma
 
@@ -352,61 +360,66 @@ for t = 1:T
 	end
 
 	push!(Value_functions, v)
-	x = OU_process.u[T_obs+(t-1)*dt_inv:T_obs+(t)*dt_inv]
-	y= OU_process.u[T_obs+(t)*dt_inv:T_obs+(t+1)*dt_inv]
-	ϵ_OU = rand(Normal(0, 1), dt_inv+1)
+	x = [ones(dt_inv,1) OU_process.u[T_obs+(t-1)*dt_inv+1:T_obs+(t)*dt_inv]]
+	y= OU_process.u[T_obs+(t)*dt_inv:T_obs+(t+1)*dt_inv-1]
+	ϵ_OU = rand(Normal(0, 1), dt_inv)
 
-	ϕ_g = [1-θ_g; σ_g]# prediction
-	ϕ = [1-θ; σ] # True values
+	ϕ_g = [const_g; 1-θ_g; σ_g]# prediction
+	ϕ = [0.0; 1-θ; σ] # True values
 	W = [x ϵ_OU]
 
-	for j in 1:dt_inv+1
+	for j in 1:dt_inv
 		ϕ_g = ϕ_g + 0.01 .*R_g^(-1)*W[j,:]*(ϕ-ϕ_g)'*W[j,:]
 		global R_g = R_g + 0.01 .*(W[j,:]*W[j,:]' - R_g)
 	end
 
-	global θ_g = 1-ϕ_g[1]
-	global σ_g = ϕ_g[2]
+	global const_g = ϕ[1]
+	global θ_g = 1-ϕ_g[2]
+	global σ_g = ϕ_g[3]
 
 	println("loop:$(t)")
 end
 
-
 plot(guesses_θ[:], label="Estimates",
-title="\$ \\textrm{Estimate of } \\theta \\textrm{ over time}\$")
+title="\$ \\textrm{Estimate of } \\theta \\textrm{ over time}\$", legend=:bottomright)
 plot!(θ.*ones(T,1), label="True value")
 png("Theta_estimates")
 
 plot(guesses_σ[:], label="Estimates",
-title="\$ \\textrm{Estimate of } \\sigma \\textrm{ over time}\$")
+title="\$ \\textrm{Estimate of } \\sigma \\textrm{ over time}\$", legend=:bottomright)
 plot!(σ.*ones(T,1), label="True value")
 png("sigma_estimates")
 
-drift_z = (-guesses_θ[:]'.*log(z[20])+guesses_σ[:]'.^2/2).*z[20]
-plot(drift_z[:], label="Estimates",
-title="Drift for median Z")
-plot!(μ[20].*ones(T,1), label="True value")
-png("drift_estimates")
+all_drifts=(-guesses_θ[:].*log.(z) .+(guesses_σ[:].^2)/2 ).*z
+
+plot(all_drifts[:,20], label="Estimates",title="Drift for Median Z", legend=:bottomright)
+plot!(μ[20]*ones(T,1), label="True value")
+png("drift_estimates_median")
+
+plot(all_drifts[:,1], label="Estimates",title="Drift for Lowest Z", legend=:bottomright)
+plot!(μ[1]*ones(T,1), label="True value")
+png("drift_estimates_low")
+
+plot(all_drifts[:,end], label="Estimates",title="Drift for Highest Z", legend=:bottomright)
+plot!(μ[end]*ones(T,1), label="True value")
+png("drift_estimates_high")
 
 plot(Value_functions[1][:,20], label="Period 1",
-title="Value Functions For median Z", grid=false,
-legend=:bottomright, xlabel="k")
-plot!(Value_functions[2][:,20], label="Period 2")
-plot!(Value_functions[5][:,20], label="Period 5")
-plot!(Value_functions[50][:,20], label="Period 50")
-plot!(Value_functions[end][:,20], label="Period 200")
+	title="Value Functions For median Z", grid=false,
+	legend=:bottomright, xlabel="k", line=:dashdot)
+plot!(Value_functions[50][:,20], label="Period 50", line=:dot)
+plot!(Value_functions[100][:,20], label="Period 100",line=:dashdotdot)
+plot!(Value_functions[end][:,20], label="Period 250", color=:orange)
 plot!(v1[:,20], label="True Value", line=:dash, color=:black)
 png("Value_med_z")
 
 plot(Value_functions[1][50,:], label="Period 1",
 title="Value Functions For median K", grid=false,
- legend=:bottomright, xlabel="z")
-plot!(Value_functions[5][50,:], label="Period 5")
-plot!(Value_functions[10][50,:], label="Period 10")
-plot!(Value_functions[50][50,:], label="Period 50", color=:orange)
-plot!(Value_functions[end][50,:], label="Period 200", color=:purple,linewidth = 1.25)
-plot!(v1[50,:], label="True Value", line=:dash, color=:black,
-	ylims=(findmin(v1[50,:])[1],findmax(v1[50,:])[1]))
+ legend=:bottomright, xlabel="z",line=:dashdot)
+plot!(Value_functions[50][50,:], label="Period 50",line=:dot)
+plot!(Value_functions[100][50,:], label="Period 100", color=:purple, line=:dashdotdot)
+plot!(Value_functions[end][50,:], label="Period 250", color=:orange,linewidth = 1.25)
+plot!(v1[50,:], label="True Value", line=:dash, color=:black)
 png("Value_med_k")
 
 
@@ -423,7 +436,7 @@ end
 # Now plot the process
 plot(OU_process.t,OU_forecast.u, grid=false,
 		label="Forecast", color=:blue,
-		title="Ornstein-Uhlenbeck Process for z")
+		title="Ornstein-Uhlenbeck Process for z", legend=:bottomright)
 plot!(OU_process.t,OU_process.u, label="Actual Process",
 		color=:black)
 png("OU_forecast")

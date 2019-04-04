@@ -2,7 +2,7 @@
     Code for solving the Hamiltonian Jacboi Bellman for
 	   an RBC model with a Diffusion process
 
-	Translated Julia code from Matlab code by Ben Moll:
+	Based on Matlab code from Ben Moll:
         http://www.princeton.edu/~moll/HACTproject.htm
 
         Updated to Julia 1.0.0
