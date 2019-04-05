@@ -9,12 +9,14 @@
 ==============================================================================#
 
 using Distributions, Plots, LinearAlgebra, SparseArrays
+using Random
+
+Random.seed!(1234)
 
 γ= 2.0 #gamma parameter for CRRA utility
 ρ = 0.05 #the discount rate
 α = 0.3 # the curvature of the production function (cobb-douglas)
 δ = 0.05 # the depreciation rate
-
 
 
 # Z our state variable follows this process
@@ -239,7 +241,6 @@ plot(k, ss_1, grid=false,
         xlims=(k_min,k_max),
 		legend=false, title="Optimal Savings Policies")
 plot!(k, zeros(H,1))
-
 png("OptimalSavings")
 
 plot(k, v_1, grid=false,
@@ -260,8 +261,8 @@ png("Value_function_vs_z")
 
 
 #  Now the agents misspecify θ and σ^2
-global θ_g = .005
-global σ_sq_g = 2.0
+global θ_g = .25
+global σ_sq_g = .008
 
 # They will update this based on a draw from a binomial
 
@@ -269,7 +270,7 @@ Dist = Bernoulli(.5)
 
 T = 1000 #periods of time for updating
 
-μ_g = (-θ_g*log.(z).+σ_sq_g/2).*z # the drift from Ito's lemma
+global μ_g = (-θ_g*log.(z).+σ_sq_g/2).*z # the drift from Ito's lemma
 Σ_sq_g = σ_sq_g.*z.^2 #the variance from Ito's lemma
 
 max_it = 100
@@ -326,6 +327,7 @@ dist = [] # set up empty array for the convergence criteria
 
 V_tot = []
 V_all=[]
+drifts=[]
 
 guess_σ=[]
 guess_θ=[]
@@ -337,6 +339,8 @@ for t = 1:T
 	global σ_sq_g = σ_sq_g
 	push!(guess_θ, θ_g)
 	push!(guess_σ, σ_sq_g)
+	push!(drifts, μ_g)
+
     for n = 1:maxit
     V=v_2
 
@@ -430,7 +434,7 @@ for t = 1:T
 		θ_g = θ_g + .01(θ-θ_g)
 		σ_sq_g = σ_sq_g + .01(σ_sq-σ_sq_g)
 
-	  μ_g = (-θ_g*log.(z).+σ_sq_g/2).*z # the drift from Ito's lemma
+	  global μ_g = (-θ_g*log.(z).+σ_sq_g/2).*z # the drift from Ito's lemma
 	  Σ_sq_g = σ_sq_g.*z.^2 #the variance from Ito's lemma
 
 
@@ -504,45 +508,45 @@ png("Value_function_vs_z_2")
 plot(z, v_1', grid=false,
 		xlabel="z", ylabel="V(z)",
 		xlims=(z_min,z_max),
-		legend=false, title="True Value Function over z")
+		legend=false, title="True Value")
 png("Value_function_vs_z_1")
 
 
 plot(k, V_tot, grid=false,
 		xlabel="k", ylabel="V(k)",
 		xlims=(k_min,k_max),
-		legend=false, title=" Value Function Median values of z over k")
+		legend=false, title="Value Function Median values of z over k")
 png("Value_function_vs_k_2_median")
 
 
-plot(k, v_1[:,20], grid=false,
+plot(k, V_tot[1], grid=false, label="Period 1", line=:dashdot)
+plot!(k,V_tot[50], label="Period 50", line=:dot)
+plot!(k,V_tot[1000], label="Period 1,000")
+plot!(k,v_1[:,20],
 		xlabel="k", ylabel="V(k)",
 		xlims=(k_min,k_max), title="Value Function over k for Median z",
-        legend=:bottomright, label="Correct Specification", line=:dot)
-plot!(k,V_tot[1], label="Misspecfication", line=:dash, color=:black)
-plot!(k,V_tot[500], label="Misspecfication after 500 periods")
-plot!(k,V_tot[1000], label="Misspecfication after 1,000 periods")
+        legend=:bottomright, label="True Value", line=:dash,color=:black)
 png("Value_functions_median_Z")
 
-plot(z, v_1[500,:], grid=false,
+plot(z,V_all[1][500,:], grid=false, label="Period 1", line=:dashdot)
+plot!(z,V_all[50][500,:], label="Period 50", line=:dot)
+plot!(z,V_all[1000][500,:], label="Period 1,000")
+plot!(z,v_1[500,:],
 		xlabel="z", ylabel="V(z)", title="Value Function over z for Median k",
-        legend=:bottomright, label="Correct Specification",
-		line=:dash,color=:black)
-plot!(z,V_all[1][500,:], label="Misspecfication")
-plot!(z,V_all[500][500,:], label="Misspecfication after 500 periods")
-plot!(z,V_all[1000][500,:], label="Misspecfication after 1,000 periods")
+        legend=:bottomright, label="True Value",
+		line=:dash, color=:black)
 png("Value_functions_median_k")
 
 plot([1:length(guess_σ)], guess_σ, grid=false,
-		xlabel="Periods", ylabel="sigma_g",
-		title="Guess Over time", label="Misspecfication")
+		xlabel="Periods", ylabel="\$ \\sigma\$",
+		title="\$ \\textrm{Estimate of } \\sigma \\textrm{ over Time}\$", label="Misspecfication")
 plot!([1:length(guess_σ)],ones(length(guess_σ)).*σ_sq,
 		label="True Value", color=:black, line=:dash)
 png("sigma")
 
 plot([1:length(guess_σ)], guess_θ, grid=false,
-		xlabel="Periods", ylabel="theta_g",
-		title="Guess Over time", label="Misspecfication",
+		xlabel="Periods", ylabel="\$ \\theta\$",
+		title="\$ \\textrm{Estimate of } \\theta \\textrm{ over Time}\$", label="Misspecfication",
 		legend=:bottomright)
 plot!([1:length(guess_σ)],ones(length(guess_σ)).*θ,
 		label="True Value", color=:black, line=:dash)

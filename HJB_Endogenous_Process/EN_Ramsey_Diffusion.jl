@@ -2,13 +2,16 @@
     Code for solving the Hamiltonian Jacboi Bellman for
 	   an Ramsey Model with a diffusion process for capital
 
-	Algorithm code from Matlab code by Ben Moll:
+ 	Based on  Matlab code from Ben Moll:
         http://www.princeton.edu/~moll/HACTproject.htm
 
         Updated to julia 1.0.0
 ==============================================================================#
 
 using Distributions, Plots, LinearAlgebra, SparseArrays
+using Random
+
+Random.seed!(1234)
 
 γ= 2.0 #gamma parameter for CRRA utility
 ρ = 0.05 #the discount rate
@@ -301,7 +304,7 @@ plot(k[1:H-1], c_2[1:H-1], grid=false,
 		xlabel="k", ylabel="c(k)",
         xlims=(k[1],k[end]),legend=:bottomright,
 		label="Guess", title="Optimal Consumption Policies")
-plot!(k[1:H-1],c_1[1:H-1], label="Actual", line=:dash)
+plot!(k[1:H-1],c_1[1:H-1], label="True Value", line=:dash)
 png("OptimalCons")
 
 #=
@@ -317,34 +320,32 @@ png("OptimalCons_2")
 
 plot(k, savings[1], grid=false,
 		xlabel="k", ylabel="s(k)",
-        xlims=(k[1],k[end]),label="Initial",
+        xlims=(k[1],k[end]),label="Period 1",
         title="Optimal Savings Policies",
-		color=:hotpink, legend=:bottomleft)
+		color=:hotpink, legend=:bottomleft, line=:dashdot)
 plot!(k, zeros(H,1), color=:black, label="")
-plot!(k,savings[100], label="1,000 period", color=:blue)
-plot!(k,savings[500], label="5,000 period", color=:green)
-plot!(k,savings[1000], label="10,000 period", color=:orange)
-plot!(k,ss_1, label="Actual", line=:dot, color=:black)
+plot!(k,savings[100], label="Period 100", color=:blue,line=:dot)
+plot!(k,savings[500], label="Period 500", color=:green, line=:dashdotdot)
+plot!(k,savings[1000], label="Period 1,000", color=:orange)
+plot!(k,ss_1, label="True Value", line=:dash, color=:black)
 png("OptimalSavings_2")
-
 
 plot(k, savings, grid=false,
 		xlabel="k", ylabel="s(k)",
         xlims=(k[1],k[end]),label="", title="Optimal Savings Policies")
 plot!(k, zeros(H,1), line=:dash, color=:black, label="", legend=:bottomleft)
-plot!(k,ss_1, color=:black, label="Actual")
+plot!(k,ss_1, color=:black, label="True Value")
 png("OptimalSavings_All")
 
-
-plot(k, v_1, grid=false,
+plot(k,Val_2[1], label="Period 1 ", color=:hotpink, line=:dashdot)
+plot!(k,Val_2[100], label="Period 100", color=:blue, line=:dot)
+plot!(k,Val_2[500], label="Period 500", color=:green, line=:dashdotdot)
+plot!(k,Val_2[end], label="Period 1,000", color=:orange )
+plot!(k,v_1, grid=false,
 		xlabel="k", ylabel="V(k)",
 		xlims=(k[1],k[end]), title="Value Functions",
         legend=:bottomright, color=:black, line=:dash,
-        label="Actual")
-plot!(k,Val_2[1], label="Initial", color=:hotpink)
-plot!(k,Val_2[100], label="1,000 period", color=:blue)
-plot!(k,Val_2[500], label="5,000 period", color=:green)
-plot!(k,Val_2[end], label="10,000 period", color=:orange)
+        label="True Value")
 png("Value_function_vs_k_2")
 
 
@@ -352,11 +353,13 @@ plot(k, Val_2, grid=false,
 		xlabel="k", ylabel="V(k)",
 		xlims=(k[1],k[end]), title="Value Functions",
 		label="", legend=:bottomright)
-plot!(k,v_1, label="Actual", color=:black)
+plot!(k,v_1, label="True Value", color=:black)
 png("Value_function_vs_k_all")
 
 
 plot([1:T], Σ_g[2:end], grid=false,
-		xlabel="t", ylabel="sigma_g", title="Guess Over time", legend=false)
+		xlabel="time", ylabel="\$\\sigma\$",
+		title="\$ \\textrm{Estimate of } \\sigma \\textrm{ over time}\$",
+		label="Misspecfication", legend=:bottomright)
 plot!([1:T],ones(T).*σ, label="True Value", color=:black, line=:dash)
 png("sigma")
