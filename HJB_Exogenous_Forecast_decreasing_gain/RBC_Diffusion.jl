@@ -12,43 +12,46 @@ using Distributions, Plots, SparseArrays, LinearAlgebra, DifferentialEquations
 
 using Random
 
-Random.seed!(1236789765432)
+Random.seed!(12676673)
 
 include("B_Switch.jl")
 
-γ= 2.0 #gamma parameter for CRRA utility
+γ= 2.0 #gamma parameter for CRRA utilit
 ρ = 0.05 #the discount rate
 α = 0.3 # the curvature of the production function (cobb-douglas)
 δ = 0.05 # the depreciation rate
 
 
-# Z our state variable follows a stochastic process
-
-corr = 0.9
-θ = -log(corr)
-σ = sqrt(2*θ*corr)
-T = 250 # Forecasting periods/ length of process
-T_obs= 50# set the number of inital observations
 
 # Create a continuous time OrnsteinUhlenbeckProcess
-global OU_process = OrnsteinUhlenbeckProcess(θ, 0.0, σ, 0.0, 0.0)
-global dt_inv = 5
+var = 0.07
+T = 10001 # Forecasting periods/ length of process
+T_obs= 100# set the number of inital observations
+global dt_inv = 5# Does this dt matter?
 global dt= 1/dt_inv
-OU_process.dt = dt
+OU_process=zeros((T+T_obs)*dt_inv)
+OU_process[1]=exp(var/2)
 
-setup_next_step!(OU_process)
-for j in 1:(dt_inv*T + T_obs + dt_inv -1)
-    accept_step!(OU_process,dt)
+# Z our state variable follows a stochastic process with the given parameters
+corr = 0.9
+θ = -log(corr)
+σ = 1.0
+ε_OU = rand(Normal(0,1), (T+T_obs)*dt_inv).*sqrt(dt)
+
+
+for i in 1:((T+T_obs)*dt_inv-1)
+	OU_process[i+1]=(1-θ*dt)*OU_process[i].+σ*ε_OU[i]
 end
 
+
 # Now plot the process
-plot(OU_process.t,OU_process.u, grid=false,
+plot(OU_process[:], grid=false,
 		xlabel="Time", ylabel="z",
-		legend=false, color="red", title="Ornstein-Uhlenbeck Process for z")
+		legend=false, color="red", title="\$ \\textrm{Ornstein-Uhlenbeck Process for } \\log(z_t) \$")
 png("OU_Process")
 
 # Step up grid space
-var = mean(OU_process.u)
+var = mean(OU_process)
 μ_z = exp(var/2)
 
 #=============================================================================
@@ -61,7 +64,7 @@ var = mean(OU_process.u)
 		f(k_{t}) = z⋅k^{α} so f'(k_{t}) = (α)⋅z⋅k^{α-1}
 	so in steady state where k_{t+1} = k_{t}
 		(1+ρ)k = α⋅z⋅k^{α} + (1-δ)k
-		k = [(α⋅z)/(ρ+δ)]^{1/(1-α)}
+		k = [(α⋅z)/(ρ+δ)]^{1/(1-α)
 
 =============================================================================#
 #K_starting point, for mean of z process
@@ -85,12 +88,12 @@ dz_sq = dz^2
 
 
 # Check the pdf to make sure our grid isn't cutting off the tails of
-	# our distribution
+	#= our distribution
 y = pdf.(LogNormal(0, var), z)
 plot(z,y, grid=false,
 		xlabel="z", ylabel="Probability",
 		legend=false, color="purple", title="PDF of z")
-png("PDF_of_z")
+png("PDF_of_z")=#
 
 #create matrices for k and z
 z= convert(Array, z)'
@@ -226,7 +229,9 @@ png("OptimalSavings")
 		Now, we have found the steady state,
 				we can move on to misspecification and forecasting
 
-		Our Agent will now misspecify η the drift parameter from our process
+		Our Agent willplot(guesses_θ[:], label="Estimates",
+title="\$ \\textrm{Estimate of } \\theta \\textrm{ over time}\$", legend=:bottomright)
+plot!(θ.*ones(T,1), label="True value", legend=:topright) now misspecify η the drift parameter from our process
 		They will then forecast an AR(1) and use this to update their
 		forecast of the process, since ϕ = 1-η.
 
@@ -239,25 +244,27 @@ png("OptimalSavings")
 
 # Use the initai points to form a OLS estimate of our coefficients
 
-X = [ones(T_obs,1) OU_process.u[1:T_obs]]
-Y = OU_process.u[1+dt_inv:T_obs+dt_inv]
-ϵ_OU = rand(Normal(0, 1), T_obs)
+X = [ones(T_obs,1) OU_process[1:T_obs]]
+Y = OU_process[1+dt_inv:T_obs+dt_inv]
+ϵ_OU = ε_OU[1:T_obs]*sqrt(dt)
 
 η_g = (X'X)^(-1) * X'Y
-θ_g = 1-η_g[2]
+θ_g = (1-η_g[2])
 const_g =η_g[1]
 
-σ_g = sqrt(cov(Y-X*η_g))
+#σ_g = sqrt(cov(Y-X*η_g))
+σ_g =σ #or sigma g is known
 
-R_g = [X ϵ_OU]'*[X ϵ_OU]
-guesses_θ,guesses_σ, guesses_const =[zeros(1,T) for i in 1:3]
+R_g = X'*X*dt
+#R_g = [1 0 ; 0 1]#Use identity matrix for R_g?
+guesses_θ,guesses_σ, guesses_const =[zeros(1,T-1) for i in 1:3]
 
 Value_functions=[]
 
 
 v =v0
 
-for t = 1:T
+for t = 1:T-1
 	global v=v0
 	global θ_g = θ_g
 	global const_g = const_g
@@ -348,7 +355,13 @@ for t = 1:T
 
 	  V_change = V-v
 
-	  global v= V
+	  Vaf[1:H-1,:] = (V[2:H, :] - V[1:H-1,:])/dk
+	  Vaf[H,:] = (z.*k_max.^α .- δ.*k_max).^(-γ) # imposes a constraint
+
+	  #throw out bad Value functions, good for debugging not for results
+	  #if findmin(Vaf)[1]>0
+	  	global v= V
+	#end
 
 	  # need push function to add to an already existing array
 	  push!(dist, findmax(abs.(V_change))[1])
@@ -360,30 +373,42 @@ for t = 1:T
 	end
 
 	push!(Value_functions, v)
-	x = [ones(dt_inv,1) OU_process.u[T_obs+(t-1)*dt_inv+1:T_obs+(t)*dt_inv]]
-	y= OU_process.u[T_obs+(t)*dt_inv:T_obs+(t+1)*dt_inv-1]
-	ϵ_OU = rand(Normal(0, 1), dt_inv)
+	x = OU_process[T_obs+(t-1)*dt_inv+1:T_obs+(t)*dt_inv]
+	y= OU_process[T_obs+(t)*dt_inv+1:T_obs+(t+1)*dt_inv]
+	#ϵ_OU = ε_OU[T_obs+(t-1)*dt_inv+1:T_obs+(t)*dt_inv]
 
-	ϕ_g = [const_g; 1-θ_g; σ_g]# prediction
-	ϕ = [0.0; 1-θ; σ] # True values
-	W = [x ϵ_OU]
+	global ϕ_g = [const_g; 1-θ_g]# prediction
+	# trues values are ϕ = [0.0; 1-θ; σ]
+	W = [ones(dt_inv,1) x]
 
-	for j in 1:dt_inv
-		ϕ_g = ϕ_g + 0.01 .*R_g^(-1)*W[j,:]*(ϕ-ϕ_g)'*W[j,:]
-		global R_g = R_g + 0.01 .*(W[j,:]*W[j,:]' - R_g)
-	end
+	#Better to loop or treat as a vector
 
-	global const_g = ϕ[1]
-	global θ_g = 1-ϕ_g[2]
-	global σ_g = ϕ_g[3]
+	global R_g = R_g + (1/t).*(W'*W*dt - R_g)
+	global ϕ_g = ϕ_g + (1/t).*R_g^(-1)*W'*(y-W*ϕ_g)*dt
+
+	#=for j in 1:dt_inv
+		global R_g = R_g + (1/t) .*(W[j,:]*W[j,:]' - R_g)
+		global ϕ_g = ϕ_g + (1/t) .*R_g^(-1)*W[j,:]*(y[j,:][1]-ϕ_g'*W[j,:])
+	end=#
+
+	global const_g = ϕ_g[1]
+	global θ_g = (1-ϕ_g[2])
+	global σ_g =σ
 
 	println("loop:$(t)")
 end
 
+cd("/home/chandler/Desktop/Simple_Exogenous_Rule/HJB_Exogenous_Forecast_decreasing_gain")
+
 plot(guesses_θ[:], label="Estimates",
 title="\$ \\textrm{Estimate of } \\theta \\textrm{ over time}\$", legend=:bottomright)
-plot!(θ.*ones(T,1), label="True value")
+plot!(θ.*ones(T,1), label="True value", legend=:topright)
 png("Theta_estimates")
+
+plot(guesses_const[:], label="Estimates",
+title="\$ \\textrm{Estimate of the constant}\\textrm{ over time}\$", legend=:bottomright)
+plot!(zeros(T,1), label="True value", legend=:topright)
+png("const_estimates")
 
 plot(guesses_σ[:], label="Estimates",
 title="\$ \\textrm{Estimate of } \\sigma \\textrm{ over time}\$", legend=:bottomright)
@@ -407,24 +432,24 @@ png("drift_estimates_high")
 plot(Value_functions[1][:,20], label="Period 1",
 	title="Value Functions For median Z", grid=false,
 	legend=:bottomright, xlabel="k", line=:dashdot)
-plot!(Value_functions[50][:,20], label="Period 50", line=:dot)
-plot!(Value_functions[100][:,20], label="Period 100",line=:dashdotdot)
-plot!(Value_functions[end][:,20], label="Period 250", color=:orange)
+plot!(Value_functions[100][:,20], label="Period 100", line=:dot)
+plot!(Value_functions[500][:,20], label="Period 500",line=:dashdotdot)
+plot!(Value_functions[end][:,20], label="Period 10,000", color=:orange)
 plot!(v1[:,20], label="True Value", line=:dash, color=:black)
 png("Value_med_z")
 
 plot(Value_functions[1][50,:], label="Period 1",
 title="Value Functions For median K", grid=false,
- legend=:bottomright, xlabel="z",line=:dashdot)
-plot!(Value_functions[50][50,:], label="Period 50",line=:dot)
-plot!(Value_functions[100][50,:], label="Period 100", color=:purple, line=:dashdotdot)
-plot!(Value_functions[end][50,:], label="Period 250", color=:orange,linewidth = 1.25)
+ legend=:topleft, xlabel="z",line=:dashdot)
+plot!(Value_functions[100][50,:], label="Period 100",line=:dot)
+plot!(Value_functions[1000][50,:], label="Period 1,000", color=:purple, line=:dashdotdot)
+plot!(Value_functions[end][50,:], label="Period 10,000", color=:orange,linewidth = 1.25)
 plot!(v1[50,:], label="True Value", line=:dash, color=:black)
 png("Value_med_k")
 
 
 # Compare the actual process and the forecast
-
+#=
 OU_forecast = OrnsteinUhlenbeckProcess(θ_g, 0.0, σ_g, 0.0, 0.0)
 OU_forecast.dt = dt
 
@@ -440,3 +465,4 @@ plot(OU_process.t,OU_forecast.u, grid=false,
 plot!(OU_process.t,OU_process.u, label="Actual Process",
 		color=:black)
 png("OU_forecast")
+=#

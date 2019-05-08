@@ -11,7 +11,7 @@
 using Distributions, Plots, LinearAlgebra, SparseArrays
 using Random
 
-Random.seed!(1234)
+Random.seed!(12364)
 
 γ= 2.0 #gamma parameter for CRRA utility
 ρ = 0.05 #the discount rate
@@ -31,7 +31,7 @@ n=0.51
 k_st = ((α)/(ρ+δ+n-σ^2))^(1/(1-α))
 
 # create the grid for k
-H = 1000 #number of points on grid
+H = 100 #number of points on grid
 k_min = 0.1*k_st # min value
 k_max = 10*k_st # max value
 k = LinRange(k_min, k_max, H)
@@ -322,7 +322,7 @@ plot(k, savings[1], grid=false,
 		xlabel="k", ylabel="s(k)",
         xlims=(k[1],k[end]),label="Period 1",
         title="Optimal Savings Policies",
-		color=:hotpink, legend=:bottomleft, line=:dashdot)
+		color=:hotpink, legend=:topleft, line=:dashdot)
 plot!(k, zeros(H,1), color=:black, label="")
 plot!(k,savings[100], label="Period 100", color=:blue,line=:dot)
 plot!(k,savings[500], label="Period 500", color=:green, line=:dashdotdot)
@@ -333,7 +333,7 @@ png("OptimalSavings_2")
 plot(k, savings, grid=false,
 		xlabel="k", ylabel="s(k)",
         xlims=(k[1],k[end]),label="", title="Optimal Savings Policies")
-plot!(k, zeros(H,1), line=:dash, color=:black, label="", legend=:bottomleft)
+plot!(k, zeros(H,1), line=:dash, color=:black, label="", legend=:topleft)
 plot!(k,ss_1, color=:black, label="True Value")
 png("OptimalSavings_All")
 
@@ -353,7 +353,7 @@ plot(k, Val_2, grid=false,
 		xlabel="k", ylabel="V(k)",
 		xlims=(k[1],k[end]), title="Value Functions",
 		label="", legend=:bottomright)
-plot!(k,v_1, label="True Value", color=:black)
+plot!(k,v_1, label="True Value", color=:black, line=:dash)
 png("Value_function_vs_k_all")
 
 

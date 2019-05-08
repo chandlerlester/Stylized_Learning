@@ -48,7 +48,7 @@ corr = 0.9
 k_st = ((α⋅μ_z)/(ρ+δ))^(1/(1-α))
 
 # create the grid for k
-H = 1000 #number of points on grid
+H = 100 #number of points on grid
 k_min = 0.3*k_st # min value
 k_max = 3*k_st # max value
 k = LinRange(k_min, k_max, H)
@@ -135,8 +135,7 @@ lowdiag=lowdiag[:]
 # spdiags in Matlab allows for automatic trimming/adding of zeros
     # spdiagm does not do this
 
-B_switch = sparse(Diagonal(centerdiag))+ [zeros(H,H*J);  sparse(Diagonal(lowdiag)) zeros(H*(J-1), H)]+ sparse(Diagonal(updiag))[(H+1):end,1:(H*J)] # trim off rows of zeros
-
+B_switch = sparse(Diagonal(centerdiag))+ [zeros(H,H*J);  sparse(Diagonal(lowdiag)) zeros(H*(J-1), H)]+ sparse(Diagonal(updiag))[(H+1):end,1:(H*J)]
 
 # Now it's time to solve the model, first put in a guess for the value function
 v0 = (zz.*kk.^α).^(1-γ)/(1-γ)/ρ
@@ -210,7 +209,7 @@ for n = 1:maxit
   B = (1/Δ + ρ)*sparse(1.0I, H*J, H*J) - A
 
   u_stacked= reshape(u, H*J, 1)
-  V_stacked = reshape(V,H*J, 1)
+  V_stacked = reshape(V,H*J, 1)# trim off rows of zeros
 
   b = u_stacked + (V_stacked./Δ)
 
@@ -352,7 +351,6 @@ for t = 1:T
     #backward difference
     Vab_2[2:H,:] = (V[2:H, :] - V[1:H-1,:])/dk
     Vab_2[1,:] = (z.*k_min.^α .- δ.*k_min).^(-γ)
-
     #H_concave = Vab .> Vaf # indicator for whether the value function is concave
 
     # Consumption and savings functions
@@ -528,10 +526,12 @@ plot!(k,v_1[:,20],
         legend=:bottomright, label="True Value", line=:dash,color=:black)
 png("Value_functions_median_Z")
 
-plot(z,V_all[1][500,:], grid=false, label="Period 1", line=:dashdot)
-plot!(z,V_all[50][500,:], label="Period 50", line=:dot)
-plot!(z,V_all[1000][500,:], label="Period 1,000")
-plot!(z,v_1[500,:],
+plot(z,V_all[1][50,:], grid=false, label="Period 1")
+plot!(z,V_all[200][50,:], label="Period 200", line=:dashdot)
+plot!(z,V_all[500][50,:], label="Period 500", line=:dot)
+plot!(z,V_all[750][50,:], label="Period 750", line=:dashdot)
+plot!(z,V_all[1000][50,:], label="Period 1,000")
+plot!(z,v_1[50,:],
 		xlabel="z", ylabel="V(z)", title="Value Function over z for Median k",
         legend=:bottomright, label="True Value",
 		line=:dash, color=:black)
@@ -541,7 +541,7 @@ plot([1:length(guess_σ)], guess_σ, grid=false,
 		xlabel="Periods", ylabel="\$ \\sigma\$",
 		title="\$ \\textrm{Estimate of } \\sigma \\textrm{ over Time}\$", label="Misspecfication")
 plot!([1:length(guess_σ)],ones(length(guess_σ)).*σ_sq,
-		label="True Value", color=:black, line=:dash)
+		label="True Value", color=:black, line=:dash, legend=:bottomright)
 png("sigma")
 
 plot([1:length(guess_σ)], guess_θ, grid=false,
