@@ -19,6 +19,11 @@ Random.seed!(1234)
 δ = 0.05 # the depreciation rate
 
 
+#  Now the agents misspecify θ and σ^2
+global θ_g = 0.25
+global σ_sq_g = 0.008
+
+
 # Z our state variable follows this process
 	#= for this process:
 	 		dlog(z) = -θ⋅log(z)dt + σ⋅dw
@@ -69,7 +74,7 @@ y = pdf.(LogNormal(0, var), z)
 plot(z,y, grid=false,
 		xlabel="z", ylabel="Probability",
 		legend=false, color="purple", title="PDF of z")
-png("PDF_Z")
+#png("PDF_Z")
 
 #create matrices for k and z
 z= convert(Array, z)'
@@ -81,12 +86,24 @@ zz = ones(H,1)*z
 μ = (-θ*log.(z).+σ_sq/2).*z # the drift from Ito's lemma
 Σ_sq = σ_sq.*z.^2 #the variance from Hto's lemma
 
-max_it = 100
+maxit = 100
 ε = 0.1^(6)
 Δ = 1000
 
+# They will update this based on a draw from a binomial
+
+Dist = Bernoulli(.5)
+
+T = 1000 #periods of time for updating
+
+global μ_g = (-θ_g*log.(z).+σ_sq_g/2).*z # the drift from Ito's lemma
+Σ_sq_g = σ_sq_g.*z.^2 #the variance from Ito's lemma
+
+# set up all of these empty matrices for Misspecfication loop
+Vaf_2, Vab_2,c_2 = [zeros(H,J) for i in 1:6]
+
 # set up all of these empty matrices
-Vaf_1, Vab_1, Vzf_1, c_1 = [zeros(H,J) for i in 1:6]
+Vaf_1, Vab_1, c_1 = [zeros(H,J) for i in 1:6]
 
 #==============================================================================
 
@@ -141,7 +158,6 @@ B_switch = sparse(Diagonal(centerdiag))+ [zeros(H,H*J);  sparse(Diagonal(lowdiag
 v0 = (zz.*kk.^α).^(1-γ)/(1-γ)/ρ
 v_1=v0
 
-maxit= 30 #set number of iterations (only need 6 to converge)
 dist = [] # set up empty array for the convergence criteria
 
 for n = 1:maxit
@@ -256,29 +272,6 @@ plot(z, v_1', grid=false,
 png("Value_function_vs_z")
 
 
-#===========================================================================#
-
-
-#  Now the agents misspecify θ and σ^2
-global θ_g = .25
-global σ_sq_g = .008
-
-# They will update this based on a draw from a binomial
-
-Dist = Bernoulli(.5)
-
-T = 1000 #periods of time for updating
-
-global μ_g = (-θ_g*log.(z).+σ_sq_g/2).*z # the drift from Ito's lemma
-Σ_sq_g = σ_sq_g.*z.^2 #the variance from Ito's lemma
-
-max_it = 100
-ε = 0.1^(6)
-Δ = 1000
-
-# set up all of these empty matrices
-Vaf_2, Vab_2,c_2 = [zeros(H,J) for i in 1:6]
-
 #==============================================================================
 
     Now we are going to construct a matrix summarizing the evolution of V_z
@@ -316,14 +309,7 @@ lowdiag_g=lowdiag_g[:]
 
 global B_switch_g = sparse(Diagonal(centerdiag_g))+ [zeros(H,H*J);  sparse(Diagonal(lowdiag_g)) zeros(H*(J-1), H)]+ sparse(Diagonal(updiag_g))[(H+1):end,1:(H*J)] # trim off rows of zeros
 
-
-# Now it's time to solve the model, first put in a guess for the value function
-v0 = (zz.*kk.^α).^(1-γ)/(1-γ)/ρ
-v_2=v0
-
-maxit= 30 #set number of iterations (only need 6 to converge)
-dist = [] # set up empty array for the convergence criteria
-
+# set up empty cells for storing parameters
 V_tot = []
 V_all=[]
 drifts=[]
@@ -339,6 +325,11 @@ for t = 1:T
 	push!(guess_θ, θ_g)
 	push!(guess_σ, σ_sq_g)
 	push!(drifts, μ_g)
+	global dist =[]
+
+	# Now it's time to solve the model, first put in a guess for the value function
+	v0 = (zz.*kk.^α).^(1-γ)/(1-γ)/ρ
+	global v_2=v0
 
     for n = 1:maxit
     V=v_2
@@ -422,15 +413,17 @@ for t = 1:T
     # need push function to add to an already existing array
     push!(dist, findmax(abs.(V_change))[1])
     if dist[n].< ε
-      println("loop")
-      println(t)
+      #println("loop")
+      #println(t)
       break
     end
     end
 
     if indicator == 1
-		θ_g = θ_g + .01(θ-θ_g)
-		σ_sq_g = σ_sq_g + .01(σ_sq-σ_sq_g)
+		θ_noise = θ + rand(Normal(0,.01),1)[1]
+		σ_sq_noise = σ_sq + rand(Normal(0,.001),1)[1]
+		θ_g = θ_g + .01(θ_noise-θ_g)
+		σ_sq_g = σ_sq_g + .01(σ_sq_noise-σ_sq_g)
 
 	  global μ_g = (-θ_g*log.(z).+σ_sq_g/2).*z # the drift from Ito's lemma
 	  Σ_sq_g = σ_sq_g.*z.^2 #the variance from Ito's lemma
@@ -482,39 +475,39 @@ plot(k, ss_2, grid=false,
         xlims=(k_min,k_max),
 		legend=false, title="Optimal Savings Policies")
 plot!(k, zeros(H,1))
-png("OptimalSavings")
+#png("OptimalSavings")
 
 plot(k, v_2, grid=false,
 		xlabel="k", ylabel="V(k)",
 		xlims=(k_min,k_max),
 		legend=false, title="Computed Value Function over k")
-png("Value_function_vs_k_2")
+#png("Value_function_vs_k_2")
 
 plot(k, v_1, grid=false,
 		xlabel="k", ylabel="V(k)",
 		xlims=(k_min,k_max),
 		legend=false, title="True Value Function over k")
-png("Value_function_vs_k_1")
+#png("Value_function_vs_k_1")
 
 z = LinRange(z_min, z_max, J)
 plot(z, v_2', grid=false,
 		xlabel="z", ylabel="V(z)",
 		xlims=(z_min,z_max),
 		legend=false, title="Computed Value Function over z")
-png("Value_function_vs_z_2")
+#png("Value_function_vs_z_2")
 
 plot(z, v_1', grid=false,
 		xlabel="z", ylabel="V(z)",
 		xlims=(z_min,z_max),
 		legend=false, title="True Value")
-png("Value_function_vs_z_1")
+#png("Value_function_vs_z_1")
 
 
 plot(k, V_tot, grid=false,
 		xlabel="k", ylabel="V(k)",
 		xlims=(k_min,k_max),
 		legend=false, title="Value Function Median values of z over k")
-png("Value_function_vs_k_2_median")
+#png("Value_function_vs_k_2_median")
 
 
 plot(k, V_tot[1], grid=false, label="Period 1", line=:dashdot)

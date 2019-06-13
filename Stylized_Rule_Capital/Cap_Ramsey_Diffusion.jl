@@ -19,6 +19,11 @@ Random.seed!(12364)
 δ = 0.05 # the depreciation rate
 σ = 0.5 #variance term
 n=0.51
+T = 1000 # set the number of external time periods for misspecification loop
+
+# Add in the misspecification
+σ_g =0.02
+Σ_g=[σ_g] #create cell with the agent's guess for σ
 
 
 #=============================================================================
@@ -39,32 +44,32 @@ dk = (k_max-k_min)/(H-1)
 k_min_1=k_min
 k_max_1=k_max
 
-
-γ= 2.0 #gamma parameter for CRRA utility
-ρ = 0.05 #the discount rate
-α = 1/3 # the curvature of the production function (cobb-douglas)
-δ = 0.05 # the depreciation rate
-σ = 0.5 #variance term
-n=0.51
-
-
 #create matrices for k and z
 kk = k*1
 
 # use Ito's lemma to find the drift and variance of our optimization equation
 
+# parameters for our loops
 max_it = 100
 ε = 0.1^(6)
 Δ = 1000
 
-# set up all of these empty matrices
+# create a random distribution to pull from for the updating rule
+Dist = Bernoulli(.45)
+
+# set up all of these empty matrices for the misspecified version later on
+Vaf_2, Vab_2, c_2 = [zeros(H,1) for i in 1:3]
+Val_2 =[]
+savings=[]
+
+# set up all of these empty matrices for the steady state algorithm
 Vaf_1, Vab_1, c_1 = [zeros(H,1) for i in 1:3]
 
-y = pdf.(Normal(.99, σ), k)
+y = pdf.(Normal(.99, σ), k) #check
 plot(k,y, grid=false,
 		xlabel="k", ylabel="Probability",
 		legend=false, color="purple", title="PDF of k")
-png("PDF_k")
+#png("PDF_k")
 
 #============================================================================#
 # Now it's time to solve the model, first put in a guess for the value function
@@ -190,20 +195,6 @@ plot(k, v_1, grid=false,
 png("Value_function_vs_k")
 
 #==================== Now resolve the model with σ misspecified =======#
-
-# create a random distribution to pull from
-Dist = Bernoulli(.45)
-T = 1000 # set the number of external time periods
-
-# Add in the misspecification
-σ_g =0.02
-Σ_g=[σ_g]
-# set up all of these empty matrices
-Vaf_2, Vab_2, c_2 = [zeros(H,1) for i in 1:3]
-Val_2 =[]
-savings=[]
-
-maxit= 30 #set number of iterations (only need 6 to converge)
 for t in 1:T
     # Now it's time to solve the model, first put in a guess for the value function
     global v0 = (kk.^α).^(1-γ)/(1-γ)/ρ
@@ -294,7 +285,8 @@ for t in 1:T
     push!(savings, ss_2)
     # add in updating
     if indicator ==1
-        global σ_g = σ_g + .01(σ-σ_g)
+		σ_noise = σ + rand(Normal(0,.1),1)[1]
+        global σ_g = σ_g + .01(σ_noise-σ_g)
     end
     println(t)
 end
@@ -307,17 +299,6 @@ plot(k[1:H-1], c_2[1:H-1], grid=false,
 plot!(k[1:H-1],c_1[1:H-1], label="True Value", line=:dash)
 png("OptimalCons")
 
-#=
-plot(k[1:H-1],cons[1][1:H-1], grid=false,
-		xlabel="k", ylabel="c(k)",
-        xlims=(k[1],k[end]),label="Initial", legend=:bottomright,
-        title="Optimal Consumption Policies", color=:hotpink)
-plot!(k[1:H-1],cons[500][1:H-1], label="500th period", color=:blue)
-plot!(k[1:H-1],cons[end][1:H-1], label="10,000th period", color=:green)
-plot!(k[1:H-1],c_1[1:H-1], label="Actual", line=:dot, color=:black)
-png("OptimalCons_2")
-=#
-
 plot(k, savings[1], grid=false,
 		xlabel="k", ylabel="s(k)",
         xlims=(k[1],k[end]),label="Period 1",
@@ -327,14 +308,14 @@ plot!(k, zeros(H,1), color=:black, label="")
 plot!(k,savings[100], label="Period 100", color=:blue,line=:dot)
 plot!(k,savings[500], label="Period 500", color=:green, line=:dashdotdot)
 plot!(k,savings[1000], label="Period 1,000", color=:orange)
-plot!(k,ss_1, label="True Value", line=:dash, color=:black)
+plot!(k,ss_1, label="True Value", line=:dash, color=:black, legend=:bottomleft)
 png("OptimalSavings_2")
 
 plot(k, savings, grid=false,
 		xlabel="k", ylabel="s(k)",
         xlims=(k[1],k[end]),label="", title="Optimal Savings Policies")
 plot!(k, zeros(H,1), line=:dash, color=:black, label="", legend=:topleft)
-plot!(k,ss_1, color=:black, label="True Value")
+plot!(k,ss_1, color=:black, label="True Value", legend=:bottomleft)
 png("OptimalSavings_All")
 
 plot(k,Val_2[1], label="Period 1 ", color=:hotpink, line=:dashdot)
