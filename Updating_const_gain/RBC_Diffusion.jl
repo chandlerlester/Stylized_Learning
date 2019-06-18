@@ -12,7 +12,7 @@ using Distributions, Plots, SparseArrays, LinearAlgebra, DifferentialEquations
 
 using Random
 
-Random.seed!(12676673)
+Random.seed!(123)
 
 include("B_Switch.jl")
 
@@ -44,7 +44,7 @@ for i in 1:((T+T_obs)*dt_inv-1)
 	OU_process[i+1]=(1-θ*dt)*OU_process[i].+σ*ε_OU[i]
 end
 
-cd("/home/chandler/Desktop/Simple_Exogenous_Rule/HJB_Exogenous_Forecast_const_gain/")
+cd("/home/chandler/Desktop/Simple_Exogenous_Rule/Updating_const_gain/")
 # Now plot the process
 plot(OU_process[:], grid=false,
 		xlabel="Time", ylabel="z",
@@ -375,25 +375,27 @@ for t = 1:T-1
 
 	push!(Value_functions, v)
 	x = OU_process[T_obs+(t-1)*dt_inv+1:T_obs+(t)*dt_inv]
-	y= OU_process[T_obs+(t)*dt_inv+1:T_obs+(t+1)*dt_inv]
+	y= OU_process[T_obs+(t-1)*dt_inv+2:T_obs+(t)*dt_inv+1]
 	ϵ_OU = ε_OU[T_obs+(t-1)*dt_inv+1:T_obs+(t)*dt_inv]
 
-	global ϕ_g = [const_g; 1.0-θ_g]# prediction
+	global ϕ_g = [const_g; 1.0-θ_g*dt]# prediction
 	# trues values are ϕ = [0.0; 1-θ; σ]
 	W = [ones(dt_inv,1) x]
 
-	#Better to loop or treat as a vector
+	#Better to loop or treat as a vector?
 
+	# This seems to converge more quickly, less noise
 	global R_g = R_g + 0.01.*(W'*W*dt - R_g)
 	global ϕ_g = ϕ_g + 0.01.*R_g^(-1)*W'*(y-W*ϕ_g)*dt
 
+	# Slower?
 	#=for j in 1:dt_inv
 		global R_g = R_g + (0.01) .*(W[j,:]*W[j,:]' - R_g)
 		global ϕ_g = ϕ_g + (0.01) .*R_g^(-1)*W[j,:]*(y[j,:][1]-ϕ_g'*W[j,:])
 	end=#
 
 	global const_g = ϕ_g[1]
-	global θ_g = (1-ϕ_g[2])
+	global θ_g = (1.0-ϕ_g[2])*dt_inv
 	global σ_g =σ
 
 	println("loop:$(t)")
@@ -437,6 +439,7 @@ plot!(Value_functions[500][:,20], label="Period 500",line=:dashdotdot)
 plot!(Value_functions[end][:,20], label="Period 10,000", color=:orange)
 plot!(v1[:,20], label="True Value", line=:dash, color=:black)
 png("Value_med_z")
+
 
 plot(Value_functions[1][50,:], label="Period 1",
 title="Value Functions For median K", grid=false,
