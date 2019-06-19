@@ -394,7 +394,7 @@ png("const_estimates")
 
 # Check what's happening to drifts over time
 
-all_drifts=(-guesses_θ[:].*log.(z) .+(guesses_σ[:].^2)/2 ).*z
+all_drifts=(-guesses_θ[:].*log.(z) .+(σ.^2)/2 ).*z
 
 plot(all_drifts[:,20], label="Estimates",title="Drift for Median Z", legend=:bottomright)
 plot!(μ[20]*ones(T,1), label="True value")

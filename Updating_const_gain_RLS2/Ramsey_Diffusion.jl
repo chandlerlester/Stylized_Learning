@@ -392,7 +392,7 @@ title="\$ \\textrm{Estimate of the constant}\\textrm{ over time}\$", legend=:bot
 plot!(zeros(T,1), label="True value", legend=:topright)
 png("const_estimates")
 
-all_drifts=(-guesses_θ[:].*log.(z) .+(guesses_σ[:].^2)/2 ).*z
+all_drifts=(-guesses_θ[:].*log.(z) .+(σ.^2)/2 ).*z
 
 plot(all_drifts[:,20], label="Estimates",title="Drift for Median Z", legend=:bottomright)
 plot!(μ[20]*ones(T,1), label="True value")
