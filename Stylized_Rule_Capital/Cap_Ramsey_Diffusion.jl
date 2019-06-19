@@ -1,6 +1,6 @@
 #==============================================================================
-    Code for solving the Hamiltonian Jacboi Bellman for
-	   an Ramsey Model with a diffusion process for capital
+    Code for solving the Hamiltonian Jacobi Bellman for
+	   a Ramsey Model with a diffusion process for capital
 
  	Based on  Matlab code from Ben Moll:
         http://www.princeton.edu/~moll/HACTproject.htm
@@ -163,37 +163,6 @@ end
 # calculate the savings for kk
 ss_1 = kk.^α - (δ+n-σ^2).*kk
 
-# Plot the savings vs. k
-plot(k, c_1, grid=false,
-		xlabel="k", ylabel="s(k)",
-        xlims=(k_min,k_max),
-		legend=false, title="Optimal Consumption Policies")
-plot!(k, zeros(H,1), line=:dash, color=:black)
-png("OptimalCons")
-
-
-plot(k, ss_1, grid=false,
-		xlabel="k", ylabel="s(k)",
-        xlims=(k_min,k_max),
-		legend=false, title="Optimal Savings Policies")
-plot!(k, zeros(H,1), line=:dash, color=:black)
-png("OptimalSavings")
-
-
-# Plot the interest rate
-r_1 = α.*kk.^(α-1)
-plot(k, r_1, grid=false,
-		xlabel="k", ylabel="r(k)",
-        xlims=(k_min,k_max),
-		legend=false, title="Optimal Interest Rate")
-png("OptimalInterest")
-
-plot(k, v_1, grid=false,
-		xlabel="k", ylabel="V(k)",
-		xlims=(k_min,k_max),
-		legend=false, title="")
-png("Value_function_vs_k")
-
 #==================== Now resolve the model with σ misspecified =======#
 for t in 1:T
     # Now it's time to solve the model, first put in a guess for the value function
@@ -285,8 +254,8 @@ for t in 1:T
     push!(savings, ss_2)
     # add in updating
     if indicator ==1
-		σ_noise = σ + rand(Normal(0,.1),1)[1]
-        global σ_g = σ_g + .01(σ_noise-σ_g)
+		σ_noise = σ + rand(Normal(0,.1),1)[1] # generate a noisy observation
+        global σ_g = σ_g + .01(σ_noise-σ_g) # use RLS to update using the noisy obs.
     end
     println(t)
 end
@@ -297,7 +266,7 @@ plot(k[1:H-1], c_2[1:H-1], grid=false,
         xlims=(k[1],k[end]),legend=:bottomright,
 		label="Guess", title="Optimal Consumption Policies")
 plot!(k[1:H-1],c_1[1:H-1], label="True Value", line=:dash)
-png("OptimalCons")
+#png("OptimalCons")
 
 plot(k, savings[1], grid=false,
 		xlabel="k", ylabel="s(k)",
@@ -316,7 +285,7 @@ plot(k, savings, grid=false,
         xlims=(k[1],k[end]),label="", title="Optimal Savings Policies")
 plot!(k, zeros(H,1), line=:dash, color=:black, label="", legend=:topleft)
 plot!(k,ss_1, color=:black, label="True Value", legend=:bottomleft)
-png("OptimalSavings_All")
+#png("OptimalSavings_All")
 
 plot(k,Val_2[1], label="Period 1 ", color=:hotpink, line=:dashdot)
 plot!(k,Val_2[100], label="Period 100", color=:blue, line=:dot)
@@ -335,7 +304,7 @@ plot(k, Val_2, grid=false,
 		xlims=(k[1],k[end]), title="Value Functions",
 		label="", legend=:bottomright)
 plot!(k,v_1, label="True Value", color=:black, line=:dash)
-png("Value_function_vs_k_all")
+#png("Value_function_vs_k_all")
 
 
 plot([1:T], Σ_g[2:end], grid=false,

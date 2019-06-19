@@ -1,6 +1,6 @@
 #==============================================================================
-    Code for solving the Hamiltonian Jacboi Bellman for
-	   an RBC model with a Diffusion process
+    Code for solving the Hamiltonian Jacobi Bellman for
+	   an Ramsey model with a Diffusion process
 
 	Orignially based on Matlab code from Ben Moll:
         http://www.princeton.edu/~moll/HACTproject.htm
@@ -14,7 +14,7 @@ using Random
 
 Random.seed!(123)
 
-include("B_Switch.jl")
+include("B_Switch.jl") # code for caclulating the Bswitch matrix
 
 γ= 2.0 #gamma parameter for CRRA utilit
 ρ = 0.05 #the discount rate
@@ -42,7 +42,6 @@ for i in 1:((T+T_obs)*dt_inv-1)
 	OU_process[i+1]=(1-θ*dt)*OU_process[i].+σ*ε_OU[i]
 end
 
-cd("/home/chandler/Desktop/Simple_Exogenous_Rule/Updating_const_gain/")
 # Now plot the process
 plot(OU_process[:], grid=false,
 		xlabel="Time", ylabel="z",
@@ -105,7 +104,7 @@ zz = ones(H,1)*z
 Σ_sq = σ.^2 .*z.^2#the variance from Ito's lemma
 global B_switch_SS = B_switch(μ, Σ_sq, dz, H)
 
-max_it = 100
+maxit= 30 #set number of iterations (only need 6 to converge)
 ε = 0.1^(6)
 Δ = 1000
 
@@ -116,7 +115,6 @@ Vaf, Vab, Vzf, Vzb, Vzz = [zeros(H,J) for i in 1:6]
 v0 = (zz.*kk.^α).^(1-γ)/(1-γ)/ρ
 v=v0
 
-maxit= 30 #set number of iterations (only need 6 to converge)
 dist = [] # set up empty array for the convergence criteria
 
 for n = 1:maxit
@@ -214,15 +212,6 @@ v1=v
 # calculate the savings for kk
 ss = zz.*kk.^α - δ.*kk - c
 
-# Plot the savings vs. k
-plot(kk, ss, grid=false,
-		xlabel="k", ylabel="s(k,z)",
-        xlims=(k_min,k_max),
-		legend=false, title="Optimal Savings Policies")
-plot!(k, zeros(H,1), color=:black, line=:dash)
-png("OptimalSavings")
-
-
 #==============================================================================
 
 		Now, we have found the steady state,
@@ -251,15 +240,11 @@ Y = OU_process[1+dt_inv:T_obs+dt_inv]
 θ_g = (1-η_g[2])
 const_g =η_g[1]
 
-#σ_g = sqrt(cov(Y-X*η_g))
-σ_g =σ #or sigma g is known
-
 R_g = X'X*dt
 #R_g = [1 0 ; 0 1]#Use identity matrix for R_g?
-guesses_θ,guesses_σ, guesses_const =[zeros(1,T-1) for i in 1:3]
+guesses_θ, guesses_const =[zeros(1,T-1) for i in 1:2]
 
-Value_functions=[]
-
+Value_functions=[] # space for saving value functions
 
 v =v0
 
@@ -267,14 +252,12 @@ for t = 1:T-1
 	global v=v0
 	global θ_g = θ_g
 	global const_g = const_g
-	global σ_g =σ_g
 	global R_g = R_g
 	guesses_θ[1,t] = θ_g
-	guesses_σ[1,t] = σ_g
 	guesses_const[1,t]=const_g
 
-	μ = (-θ_g*log.(z).+σ_g.^2/2).*z # the drift from Ito's lemma
-	Σ_sq = σ_g.^2 .*z.^2#the variance from Ito's lemma
+	μ = (-θ_g*log.(z).+σ.^2/2).*z # the drift from Ito's lemma
+	Σ_sq = σ.^2 .*z.^2#the variance from Ito's lemma
 
 	global B_switch_G = B_switch(μ, Σ_sq, dz, H)
 
@@ -394,7 +377,6 @@ for t = 1:T-1
 
 	global const_g = ϕ_g[1]
 	global θ_g = (1.0-ϕ_g[2])*dt_inv
-	global σ_g =σ
 
 	println("loop:$(t)")
 end
@@ -410,24 +392,21 @@ title="\$ \\textrm{Estimate of the constant}\\textrm{ over time}\$", legend=:bot
 plot!(zeros(T,1), label="True value", legend=:topright)
 png("const_estimates")
 
-plot(guesses_σ[:], label="Estimates",
-title="\$ \\textrm{Estimate of } \\sigma \\textrm{ over time}\$", legend=:bottomright)
-plot!(σ.*ones(T,1), label="True value")
-png("sigma_estimates")
+# Check what's happening to drifts over time
 
 all_drifts=(-guesses_θ[:].*log.(z) .+(guesses_σ[:].^2)/2 ).*z
 
 plot(all_drifts[:,20], label="Estimates",title="Drift for Median Z", legend=:bottomright)
 plot!(μ[20]*ones(T,1), label="True value")
-png("drift_estimates_median")
+#png("drift_estimates_median")
 
 plot(all_drifts[:,1], label="Estimates",title="Drift for Lowest Z", legend=:bottomright)
 plot!(μ[1]*ones(T,1), label="True value")
-png("drift_estimates_low")
+#png("drift_estimates_low")
 
 plot(all_drifts[:,end], label="Estimates",title="Drift for Highest Z", legend=:bottomright)
 plot!(μ[end]*ones(T,1), label="True value")
-png("drift_estimates_high")
+#png("drift_estimates_high")
 
 plot(Value_functions[1][:,20], label="Period 1",
 	title="Value Functions For median Z", grid=false,
@@ -472,22 +451,3 @@ plot(mean_const[:], label="Mean Estimates",
 title="\$ \\textrm{Mean of Constant Estimates Observed Over Time}\$", legend=:bottomright)
 plot!(zeros(T,1), label="True value", legend=:topright)
 png("const_means")
-
-# Compare the actual process and the forecast
-#=
-OU_forecast = OrnsteinUhlenbeckProcess(θ_g, 0.0, σ_g, 0.0, 0.0)
-OU_forecast.dt = dt
-
-setup_next_step!(OU_forecast)
-for j in 1:(dt_inv*T + (dt_inv-1)+T_obs)
-    accept_step!(OU_forecast,dt)
-end
-
-# Now plot the process
-plot(OU_process.t,OU_forecast.u, grid=false,
-		label="Forecast", color=:blue,
-		title="Ornstein-Uhlenbeck Process for z", legend=:bottomright)
-plot!(OU_process.t,OU_process.u, label="Actual Process",
-		color=:black)
-png("OU_forecast")
-=#

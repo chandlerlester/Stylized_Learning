@@ -1,6 +1,6 @@
 #==============================================================================
-    Code for solving the Hamiltonian Jacboi Bellman for
-	   an RBC model with a Diffusion process
+    Code for solving the Hamiltonian Jacobi Bellman for
+	   a Ramsey model with a Diffusion process for productivity
 
 	Based on Matlab code from Ben Moll:
         http://www.princeton.edu/~moll/HACTproject.htm
@@ -250,27 +250,6 @@ end
 # calculate the savings for kk
 ss_1 = zz.*kk.^α - δ.*kk - c_1
 
-# Plot the savings vs. k
-plot(k, ss_1, grid=false,
-		xlabel="k", ylabel="s(k,z)",
-        xlims=(k_min,k_max),
-		legend=false, title="Optimal Savings Policies")
-plot!(k, zeros(H,1))
-png("OptimalSavings")
-
-plot(k, v_1, grid=false,
-		xlabel="k", ylabel="V(k)",
-		xlims=(k_min,k_max),
-		legend=false, title="")
-png("Value_function_vs_k")
-
-z = LinRange(z_min, z_max, J)
-plot(z, v_1', grid=false,
-		xlabel="z", ylabel="V(z)",
-		xlims=(z_min,z_max),
-		legend=false, title="")
-png("Value_function_vs_z")
-
 
 #==============================================================================
 
@@ -420,19 +399,18 @@ for t = 1:T
     end
 
     if indicator == 1
-		θ_noise = θ + rand(Normal(0,.01),1)[1]
+		θ_noise = θ + rand(Normal(0,.01),1)[1] # create noisy observations
 		σ_sq_noise = σ_sq + rand(Normal(0,.001),1)[1]
-		θ_g = θ_g + .01(θ_noise-θ_g)
+		θ_g = θ_g + .01(θ_noise-θ_g) #update using RLS and noisy obs
 		σ_sq_g = σ_sq_g + .01(σ_sq_noise-σ_sq_g)
 
+	#use updated paramters to calculate Bswitch_g
 	  global μ_g = (-θ_g*log.(z).+σ_sq_g/2).*z # the drift from Ito's lemma
 	  Σ_sq_g = σ_sq_g.*z.^2 #the variance from Ito's lemma
-
 
 	  yy_g = (-Σ_sq_g/dz_sq - μ_g/dz)
 	  χ_g = Σ_sq_g/(2*dz_sq)
 	  ζ_g = μ_g/dz + Σ_sq_g/(2*dz_sq)
-
 
 	  # Define the diagonals of this matrix
 	  updiag_g = zeros(H,1)
