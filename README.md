@@ -28,7 +28,7 @@ Code for this learning exercise can be found in:
 - Updating_decreasing_gain
 - Updating_decreasing_gain_RLS2 
 
-The folders labeled "RLS2" use a version of RLS that uses multiple data points for one calculate. 
+The folders labeled "RLS2" use a version of RLS that uses multiple data points for one calculation. 
 Folders without this label run a version of the code that uses a more traditional RLS formula; 
 here the agents run RLS on each data point even though they observe multiple data points in one time interval. 
 
