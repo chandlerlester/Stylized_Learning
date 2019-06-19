@@ -374,31 +374,31 @@ for t = 1:T-1
 
 	push!(Value_functions, v)
 	x = OU_process[T_obs+(t-1)*dt_inv+1:T_obs+(t)*dt_inv]
-	y= OU_process[T_obs+(t)*dt_inv+1:T_obs+(t+1)*dt_inv]
+	y= OU_process[T_obs+(t-1)*dt_inv+2:T_obs+(t)*dt_inv+1]
 	#ϵ_OU = ε_OU[T_obs+(t-1)*dt_inv+1:T_obs+(t)*dt_inv]
 
-	global ϕ_g = [const_g; 1-θ_g]# prediction
+	global ϕ_g = [const_g; 1-θ_g*dt]# prediction
 	# trues values are ϕ = [0.0; 1-θ; σ]
 	W = [ones(dt_inv,1) x]
 
 	#Better to loop or treat as a vector
 
-	global R_g = R_g + (1/t).*(W'*W*dt - R_g)
-	global ϕ_g = ϕ_g + (1/t).*R_g^(-1)*W'*(y-W*ϕ_g)*dt
+	#global R_g = R_g + (1/t).*(W'*W*dt - R_g)
+	#global ϕ_g = ϕ_g + (1/t).*R_g^(-1)*W'*(y-W*ϕ_g)*dt
 
-	#=for j in 1:dt_inv
-		global R_g = R_g + (1/t) .*(W[j,:]*W[j,:]' - R_g)
-		global ϕ_g = ϕ_g + (1/t) .*R_g^(-1)*W[j,:]*(y[j,:][1]-ϕ_g'*W[j,:])
-	end=#
+	for j in 1:dt_inv
+		global R_g = R_g + (1/t) .*(W[j,:]*W[j,:]' - R_g)*dt
+		global ϕ_g = ϕ_g + (1/t) .*R_g^(-1)*W[j,:]*(y[j,:][1]-ϕ_g'*W[j,:])*dt
+	end
 
 	global const_g = ϕ_g[1]
-	global θ_g = (1-ϕ_g[2])
+	global θ_g = (1-ϕ_g[2])*dt_inv
 	global σ_g =σ
 
 	println("loop:$(t)")
 end
 
-cd("/home/chandler/Desktop/Simple_Exogenous_Rule/HJB_Exogenous_Forecast_decreasing_gain")
+cd("/home/chandler/Desktop/Simple_Exogenous_Rule/Updating_decreasing_gain")
 
 plot(guesses_θ[:], label="Estimates",
 title="\$ \\textrm{Estimate of } \\theta \\textrm{ over time}\$", legend=:bottomright)

@@ -42,7 +42,7 @@ for i in 1:((T+T_obs)*dt_inv-1)
 	OU_process[i+1]=(1-θ*dt)*OU_process[i].+σ*ε_OU[i]
 end
 
-cd("/home/chandler/Desktop/Simple_Exogenous_Rule/Updating_const_gain/")
+cd("/home/chandler/Desktop/Simple_Exogenous_Rule/Updating_const_gain_RLS2/")
 # Now plot the process
 plot(OU_process[:], grid=false,
 		xlabel="Time", ylabel="z",
@@ -383,14 +383,14 @@ for t = 1:T-1
 	#Better to loop or treat as a vector?
 
 	# This seems to converge more quickly, less noise
-	#global R_g = R_g + 0.01.*(W'*W*dt - R_g)
-	#global ϕ_g = ϕ_g + 0.01.*R_g^(-1)*W'*(y-W*ϕ_g)*dt
+	global R_g = R_g + 0.01.*(W'*W*dt - R_g)
+	global ϕ_g = ϕ_g + 0.01.*R_g^(-1)*W'*(y-W*ϕ_g)*dt
 
 	# Slower, weight each value with dt
-	for j in 1:dt_inv
+	#=for j in 1:dt_inv
 		global R_g = R_g + (0.01) .*(W[j,:]*W[j,:]' - R_g).*dt
 		global ϕ_g = ϕ_g + (0.01) .*R_g^(-1)*W[j,:]*(y[j,:][1]-ϕ_g'*W[j,:]).*dt
-	end
+	end=#
 
 	global const_g = ϕ_g[1]
 	global θ_g = (1.0-ϕ_g[2])*dt_inv
