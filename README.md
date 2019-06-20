@@ -33,4 +33,4 @@ Folders without this label run a version of the code that uses a more traditiona
 here the agents run RLS on each data point even though they observe multiple data points in one time interval. 
 
 ### My Paper 
-For a full explanation and motivation for these exercises see my [field paper](https://chandlerlester.com/images/Field-Paper-2019-06-20.pdf). 
+For a full explanation of these exercises see my [field paper](https://chandlerlester.com/images/Field-Paper-2019-06-20.pdf). 
